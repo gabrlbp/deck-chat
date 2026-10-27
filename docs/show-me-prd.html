@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Deck Chat — PRD visual</title>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --panel: #18181b;
+    --panel-2: #1f1f23;
+    --line: #2f2f35;
+    --text: #efeff1;
+    --muted: #adadb8;
+    --twitch: #9146ff;
+    --twitch-soft: #9146ff22;
+    --ok: #00c853;
+    --warn: #ffb300;
+    --off: #53535f;
+    --poke: #ffcb05;
+    --radius: 10px;
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h1 span { color: var(--twitch); }
+  h2 { font-size: 18px; margin: 48px 0 12px; display: flex; gap: 10px; align-items: center; }
+  h2 .n { background: var(--twitch); color: #fff; font-size: 12px; border-radius: 99px; padding: 2px 9px; }
+  p.lead { color: var(--muted); margin: 0 0 8px; max-width: 70ch; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tag { font-size: 12px; border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; color: var(--muted); }
+  .tag.in { border-color: var(--twitch); color: var(--text); }
+  .tag.out { text-decoration: line-through; opacity: .6; }
+
+  /* ---------- wireframe ---------- */
+  .app { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel); box-shadow: 0 20px 50px #0008; }
+  .bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--panel-2); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .brand { font-weight: 700; margin-right: auto; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+  .dot.warn { background: var(--warn); } .dot.off { background: var(--off); }
+  .pill.tw { border-color: var(--twitch); background: var(--twitch-soft); }
+  .icon { color: var(--muted); font-size: 14px; }
+  .body { display: grid; grid-template-columns: 1fr; }
+  .body.with-panel { grid-template-columns: 1fr 260px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px; background: var(--line); min-height: 380px; }
+  .slot { background: var(--panel); display: grid; grid-template-rows: auto 1fr; min-height: 180px; }
+  .slot header { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  .slot header b { margin-right: auto; font-weight: 600; }
+  .game { margin: 8px; border-radius: 6px; display: grid; place-items: center; font-size: 13px; color: #222;
+    background: repeating-linear-gradient(45deg, #ffcb05 0 14px, #f5c000 14px 28px); font-weight: 600; position: relative; }
+  .game small { position: absolute; bottom: 6px; right: 8px; font-size: 10px; font-weight: 500; opacity: .7; }
+  .slot.empty .game { background: transparent; border: 2px dashed var(--line); color: var(--muted); }
+  .settings { border-left: 1px solid var(--line); padding: 14px; font-size: 13px; background: var(--panel-2); }
+  .settings h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .sw { width: 28px; height: 16px; border-radius: 99px; background: var(--twitch); position: relative; flex: none; }
+  .sw::after { content: ""; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+  .sw.offsw { background: var(--off); } .sw.offsw::after { right: auto; left: 2px; }
+  .code { font-family: ui-monospace, Consolas, monospace; background: var(--bg); border: 1px solid var(--twitch); border-radius: 6px; padding: 8px; text-align: center; letter-spacing: .2em; font-size: 16px; margin: 8px 0 4px; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .toggle { display: flex; gap: 8px; margin: 0 0 12px; }
+  .toggle button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+  .toggle button.active { border-color: var(--twitch); background: var(--twitch-soft); }
+  [hidden] { display: none !important; }
+  .brand { margin-right: 8px; }
+  .tabs { display: flex; gap: 4px; margin-right: auto; }
+  .tab { font-size: 13px; padding: 4px 10px; border-radius: 6px; color: var(--muted); cursor: pointer; }
+  .tab.active { background: var(--bg); color: var(--text); box-shadow: inset 0 -2px 0 var(--twitch); }
+  .grid { position: relative; }
+  .grid.frozen > .slot { filter: blur(3px) brightness(.55); }
+  .modal { position: absolute; inset: 0; display: grid; place-items: center; z-index: 2; }
+  .dialog { width: min(360px, 90%); background: var(--panel-2); border: 1px solid var(--twitch); border-radius: var(--radius); padding: 16px; box-shadow: 0 20px 60px #000c; }
+  .dialog h4, .settings-page h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .input { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 13px; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .btn { font-size: 12px; background: var(--twitch); color: #fff; border-radius: 6px; padding: 5px 12px; white-space: nowrap; }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  .settings-page { display: grid; grid-template-columns: 160px 1fr; min-height: 380px; font-size: 13px; }
+  .settings-page nav { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-right: 1px solid var(--line); background: var(--panel-2); }
+  .settings-page nav span { padding: 6px 10px; border-radius: 6px; color: var(--muted); }
+  .settings-page nav span.active { background: var(--twitch-soft); color: var(--text); }
+  .settings-page .content { padding: 16px 20px; max-width: 560px; }
+  .row em { font-style: normal; font-size: 11px; margin-left: 6px; color: var(--muted); }
+  .row em.ok { color: var(--ok); } .row em.wait { color: var(--warn); }
+  #caption { margin: 10px 2px 0; }
+
+  /* ---------- arquitetura ---------- */
+  .arch { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: stretch; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; font-size: 13px; }
+  .box h3 { margin: 0 0 6px; font-size: 14px; }
+  .box code { font-size: 12px; color: var(--poke); }
+  .box ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+  .box.tw { border-color: var(--twitch); }
+  .box.ui { border-color: #3a7bd5; }
+  .box.slots { border-color: var(--poke); }
+  .flow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); }
+  .flow span { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; color: var(--text); }
+
+  /* ---------- decisões / roadmap ---------- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; font-size: 13px; }
+  .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .card .v { font-size: 16px; font-weight: 700; margin: 2px 0 6px; }
+  .card p { margin: 0; color: var(--muted); }
+  .phases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .phase { border-top: 3px solid var(--line); background: var(--panel); border-radius: 0 0 var(--radius) var(--radius); padding: 14px; font-size: 13px; }
+  .phase.p0 { border-color: var(--warn); } .phase.p1 { border-color: var(--twitch); } .phase.p2 { border-color: var(--off); }
+  .phase h3 { margin: 0 0 8px; font-size: 14px; }
+  .phase ol, .phase ul { margin: 0; padding-left: 18px; color: var(--muted); }
+  .phase li { margin: 3px 0; }
+
+  @media (max-width: 760px) {
+    .settings-page { grid-template-columns: 1fr; }
+    .settings-page nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); }
+    .grid { grid-template-columns: 1fr; grid-template-rows: none; }
+    .arch, .phases { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Deck Chat <span>· PRD visual</span></h1>
+  <p class="lead">Contas do PokeIdle em grid com sessões isoladas e a main presente nos chats da Twitch, sem vídeo e sem UI de chat. Windows, Electron + Svelte 5.</p>
+  <div class="tags">
+    <span class="tag in">4 slots isolados</span>
+    <span class="tag in">Twitch: presença via IRC</span>
+    <span class="tag in">Bandeja + auto-start</span>
+    <span class="tag in">Aba + modal de configurações</span>
+    <span class="tag out">Kick</span>
+    <span class="tag out">Auto-update</span>
+    <span class="tag out">Ler/enviar chat</span>
+    <span class="tag out">Automação de gameplay</span>
+  </div>
+
+  <!-- 1. Wireframe -->
+  <h2><span class="n">1</span> A janela</h2>
+  <div class="toggle" role="tablist">
+    <button class="active" data-view="grid">Aba Contas</button>
+    <button data-view="settings">Aba Configurações</button>
+    <button data-view="modal">Modal rápido</button>
+  </div>
+  <div class="app">
+    <div class="bar">
+      <span class="brand">Deck Chat</span>
+      <span class="tabs"><span class="tab active" data-tab="grid">Contas</span><span class="tab" data-tab="settings">Configurações</span></span>
+      <span class="pill tw"><span class="dot"></span>Twitch 3/7 ao vivo · 3 bônus</span>
+      <span class="pill"><span class="dot"></span>Slots 3/3 ok</span>
+    </div>
+    <div class="body" id="body">
+      <div class="grid" id="grid">
+        <div class="slot"><header><b>Alt A</b><span class="icon">🔊</span><span class="icon">⟳</span><span class="dot"></span></header><div class="game">pokeidle.io<small>persist:slot-1</small></div></div>
+        <div class="slot"><header><b>Alt B</b><span class="icon">🔇</span><span class="icon">⟳</span><span class="dot"></span></header><div class="game">pokeidle.io<small>persist:slot-2</small></div></div>
+        <div class="slot"><header><b>Alt C</b><span class="icon">🔇</span><span class="icon">⟳</span><span class="dot warn"></span></header><div class="game">pokeidle.io · recarregando<small>persist:slot-3</small></div></div>
+        <div class="slot empty"><header><b>Slot 4</b><span class="dot off"></span></header><div class="game">+ ativar slot (main futura)</div></div>
+        <div class="modal" id="modal" hidden>
+          <div class="dialog">
+            <h4>Adicionar canal Twitch</h4>
+            <div class="input">streamer_oficial_3</div>
+            <div class="actions"><span class="btn ghost">Cancelar</span><span class="btn">Salvar</span></div>
+          </div>
+        </div>
+      </div>
+      <section class="settings-page" id="settings" hidden>
+        <nav>
+          <span>Slots</span><span class="active">Twitch</span><span>Sistema</span><span>Sobre</span>
+        </nav>
+        <div class="content">
+          <h4>Twitch (main)</h4>
+          <div class="row"><span>Conectado como <b>gbr_main</b></span><span class="btn ghost">Sair</span></div>
+          <div class="row"><span>#axtlol <em class="ok">ao vivo · bônus ativo (estimado)</em></span><span class="sw"></span></div>
+          <div class="row"><span>#streamer_oficial_2 <em class="wait">ao vivo · bônus em 2:14</em></span><span class="sw"></span></div>
+          <div class="row"><span>#streamer_oficial_3 <em>no chat · offline</em></span><span class="sw"></span></div>
+          <div class="row"><span>#streamer_oficial_4 <em>desligado</em></span><span class="sw offsw"></span></div>
+          <div class="note">Primeiro login: o app mostra um código, que você digita em twitch.tv/activate</div>
+          <div class="code">ABCD-1234</div>
+          <h4 style="margin-top:18px">Sobre</h4>
+          <div class="row"><span>Versão instalada <b>v0.1.0</b></span><span class="btn ghost">Abrir Releases ↗</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note" id="caption">O dia a dia: 3 alts num grid 2×2 e o slot 4 reservado.</p>
+
+  <!-- 2. Arquitetura -->
+  <h2><span class="n">2</span> Quem faz o quê</h2>
+  <div class="arch">
+    <div class="box ui">
+      <h3>Renderer · Svelte 5</h3>
+      <code>src/renderer</code>
+      <ul>
+        <li>Desenha só a moldura: barra, cabeçalhos, status</li>
+        <li>Mede cada slot e manda os bounds ao main</li>
+        <li>Fala só com <code>window.deck</code></li>
+      </ul>
+    </div>
+    <div class="box slots">
+      <h3>Main · SlotManager</h3>
+      <code>src/main/slots</code>
+      <ul>
+        <li>1 <code>WebContentsView</code> por slot</li>
+        <li><code>persist:slot-N</code> = navegador separado</li>
+        <li><code>backgroundThrottling: false</code></li>
+        <li>Mutar, recarregar, auto-reload em crash</li>
+      </ul>
+    </div>
+    <div class="box tw">
+      <h3>Main · TwitchPresence</h3>
+      <code>src/main/twitch</code>
+      <ul>
+        <li>Device Code Flow, scope <code>chat:read</code></li>
+        <li>1 WebSocket IRC → <code>JOIN</code> em todos os canais</li>
+        <li>PING/PONG, reconexão, refresh do token</li>
+        <li>Mensagens descartadas: só presença</li>
+      </ul>
+    </div>
+    <div class="flow">
+      <span>Svelte</span>→<span>preload (IPC validado com Valibot)</span>→<span>main</span>→<span>pokeidle.io ×4</span>+<span>irc-ws.chat.twitch.tv</span>
+    </div>
+  </div>
+
+  <!-- 3. Decisões -->
+  <h2><span class="n">3</span> Decisões principais</h2>
+  <div class="cards">
+    <div class="card"><div class="k">Runtime</div><div class="v">Electron</div><p>Partitions isolam as sessões nativamente. Tauri/WebView2 brigaria com vários perfis.</p></div>
+    <div class="card"><div class="k">UI</div><div class="v">Svelte 5, sem Kit</div><p>Runes ≈ signals do Angular. Sem rotas nem SSR: é um app de uma tela.</p></div>
+    <div class="card"><div class="k">Validação</div><div class="v">Valibot</div><p>Só nas fronteiras: config em disco, IPC, OAuth. Não é exigência do Svelte.</p></div>
+    <div class="card"><div class="k">Twitch</div><div class="v">IRC headless</div><p>Presença no chat, que é o que o Get Chatters (do mod/dev) enxerga. Custo ~0.</p></div>
+    <div class="card"><div class="k">Segredos</div><div class="v">safeStorage</div><p>Token Twitch criptografado com a DPAPI do Windows.</p></div>
+    <div class="card"><div class="k">Configurações</div><div class="v">Aba + modal com foto</div><p>Os slots são escondidos (o jogo segue rodando) e o modal aparece sobre prints desfocados.</p></div>
+    <div class="card"><div class="k">Distribuição</div><div class="v">1 repo privado, update manual</div><p>CI gera o .exe nos Releases com o GITHUB_TOKEN automático. Sem PAT, sem segundo repo.</p></div>
+  </div>
+
+  <!-- 4. Roadmap -->
+  <h2><span class="n">4</span> Roadmap</h2>
+  <div class="phases">
+    <div class="phase p0">
+      <h3>Fase 0 · Spikes</h3>
+      <ol>
+        <li><b>S1</b> ✅ IRC ativa o bônus (3:40)</li>
+        <li><b>S2</b> ✅ 3 partitions isoladas, ~715 MB</li>
+        <li><b>S3</b> ✅ bandeja/coberta ok; minimizar → bandeja</li>
+      </ol>
+    </div>
+    <div class="phase p1">
+      <h3>Fase 1 · MVP</h3>
+      <ol>
+        <li>Casca Electron + Svelte</li>
+        <li>Slots + grid automático</li>
+        <li>Aba + modal de configurações</li>
+        <li>Twitch: login + presença + ao vivo</li>
+        <li>Bandeja, auto-start, status</li>
+        <li>CI Windows → .exe nos Releases</li>
+      </ol>
+    </div>
+    <div class="phase p2">
+      <h3>Fase 2 · Talvez</h3>
+      <ul>
+        <li>Main no slot 4</li>
+        <li>Modo foco / zoom por slot</li>
+        <li>Reavaliar a Kick</li>
+      </ul>
+    </div>
+  </div>
+</main>
+<script>
+  const grid = document.getElementById('grid')
+  const settings = document.getElementById('settings')
+  const modal = document.getElementById('modal')
+  const caption = document.getElementById('caption')
+  const captions = {
+    grid: 'O dia a dia: 3 alts num grid 2×2 e o slot 4 reservado.',
+    settings: 'Aba Configurações em tela cheia. As views dos slots ficam escondidas, mas os jogos continuam rodando.',
+    modal: 'Modal rápido: o main tira um print de cada slot (capturePage), esconde as views e a UI mostra os prints desfocados por baixo.',
+  }
+  function show(view) {
+    document.querySelectorAll('.toggle button').forEach((x) => x.classList.toggle('active', x.dataset.view === view))
+    document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === (view === 'settings' ? 'settings' : 'grid')))
+    grid.hidden = view === 'settings'
+    settings.hidden = view !== 'settings'
+    modal.hidden = view !== 'modal'
+    grid.classList.toggle('frozen', view === 'modal')
+    caption.textContent = captions[view]
+  }
+  document.querySelectorAll('.toggle button').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)))
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => show(t.dataset.tab)))
+</script>
+</body>
+</html>
