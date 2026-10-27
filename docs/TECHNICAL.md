@@ -231,8 +231,13 @@ deck-chat/
 │   │   ├── autostart.ts          # setLoginItemSettings
 │   │   ├── slots/
 │   │   │   ├── SlotManager.ts    # cria/destroi views, bounds, mute, reload, crash, visibilidade, capturePage
-│   │   │   ├── policy.ts         # navegação permitida, window open handler
-│   │   │   └── probe.ts          # medição de throttling (spike S3), isolated world
+│   │   │   ├── policy.ts         # navegação permitida, popups about:blank, window open handler
+│   │   │   ├── activity.ts       # DevTools Protocol: tráfego de rede do slot (vigia de saúde + fonte de eventos)
+│   │   │   ├── recorder.ts       # gravação das mensagens WS (spike S4, sai depois)
+│   │   │   └── probe.ts          # medição de throttling (spike S3, sai na Fase 1)
+│   │   ├── events/
+│   │   │   ├── parser.ts         # mensagem WS → evento (shiny, item raro, captura rara, problema); puro e testável
+│   │   │   └── EventFeed.ts      # feed em memória da sessão, filtros, contador de não lidas
 │   │   └── twitch/
 │   │       ├── auth.ts           # Device Code Flow, validate, refresh
 │   │       ├── irc.ts            # parser de linhas IRC (puro, testável)

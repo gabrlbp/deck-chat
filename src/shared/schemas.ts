@@ -53,3 +53,4 @@ export const SetMutedPayload = v.object({ id: SlotIdSchema, muted: v.boolean() }
 export const SetEnabledPayload = v.object({ id: SlotIdSchema, enabled: v.boolean() })
 export const SetZoomPayload = v.object({ id: SlotIdSchema, zoom: ZoomSchema })
 export const SlotIdPayload = v.object({ id: SlotIdSchema })
+export const MarkPayload = v.object({ text: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(200)) })

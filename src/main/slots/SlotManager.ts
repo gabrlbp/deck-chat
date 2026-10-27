@@ -5,6 +5,7 @@ import { appendCsv, log } from '../logger'
 import { ActivityMonitor } from './activity'
 import { applySlotPolicy } from './policy'
 import { installProbe, readProbe } from './probe'
+import type { WsRecorder } from './recorder'
 
 type Slot = {
   view: WebContentsView | null
@@ -24,13 +25,15 @@ export class SlotManager {
   private readonly config: Config
   private readonly persist: () => void
   private readonly onChange: () => void
+  private readonly recorder: WsRecorder
   private readonly slots = new Map<SlotId, Slot>()
 
-  constructor(win: BrowserWindow, config: Config, persist: () => void, onChange: () => void) {
+  constructor(win: BrowserWindow, config: Config, persist: () => void, onChange: () => void, recorder: WsRecorder) {
     this.win = win
     this.config = config
     this.persist = persist
     this.onChange = onChange
+    this.recorder = recorder
     for (const cfg of config.slots) {
       this.slots.set(cfg.id, { view: null, activity: null, status: 'disabled', bounds: HIDDEN })
     }
@@ -150,7 +153,7 @@ export class SlotManager {
     const wc = view.webContents
     wc.setAudioMuted(cfg.muted)
     applySlotPolicy(wc, this.config.gameUrl, cfg.id)
-    const activity = new ActivityMonitor(wc, cfg.id)
+    const activity = new ActivityMonitor(wc, cfg.id, this.recorder)
     slot.activity = activity
 
     // só a navegação da página principal conta; iframes e pushState não mudam o status

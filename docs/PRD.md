@@ -86,6 +86,7 @@ PC secundário (Windows)
 | F1.8 | Se a página do slot travar ou o processo cair, o app recarrega sozinho e registra o evento |
 | F1.9 | URL do jogo configurável (padrão `https://pokeidle.io`) |
 | F1.10 | Os slots **continuam rodando** enquanto a aba ou um modal de configurações estiver aberto |
+| F1.11 | **Vigia de saúde**: o jogo é controlado pelo servidor e recebe ~60–90 mensagens/min por alt (S3). Se um slot ficar **3 min sem receber nada**, ele vai para o status `sem resposta` e é recarregado sozinho. A barra do slot mostra `eventos/min` |
 
 ### F2 — Presença na Twitch (main)
 
@@ -112,6 +113,18 @@ PC secundário (Windows)
 | F3.3 | **Indicador de status** global na barra superior: Twitch (conectado, com nº de canais e bônus estimado) e slots (ok, recarregando, erro) |
 | F3.4 | **Atualização manual**: a aba Sobre mostra a versão instalada. Para atualizar, baixe o novo instalador nos Releases do repo privado e rode-o por cima; as sessões e a config são preservadas |
 | F3.5 | Janela lembra tamanho, posição e monitor |
+
+### F5 — Notificações das alts
+
+| ID | Requisito |
+|---|---|
+| F5.1 | **Aba "Notificações"**: linha do tempo única com os eventos de todas as alts, mostrando horário, alt, ícone do tipo e descrição |
+| F5.2 | Tipos: **shiny** (apareceu/capturou), **itens raros** (lista configurável por nome/ID: boss token, fragmento de chave…), **captura rara** (lendário, mítico, antigo, divino), **problemas** (alt morreu, sem pokebola, sem resposta via F1.11) |
+| F5.3 | Filtro por alt e por tipo |
+| F5.4 | Fonte: leitura **passiva** das mensagens WebSocket que o servidor envia a cada slot (o mesmo canal do F1.11). Nada é enviado ao jogo |
+| F5.5 | Histórico **só da sessão atual** (em memória). Fechar o app limpa a lista |
+| F5.6 | Sem notificação do Windows: só a aba, com um contador de não lidas no título da aba |
+| F5.7 | O formato das mensagens é descoberto no spike **S4**. O parser fica isolado (`src/main/events/`), porque pode quebrar quando o jogo atualizar. Mensagens não reconhecidas são ignoradas e registradas no log |
 
 ### F4 — Configurações
 
@@ -238,12 +251,13 @@ flowchart LR
 | S1 — Presença IRC ✅ | Uma conexão IRC autenticada (sem vídeo) ativa o bônus de streamer na main? | **Validado em 26/10/2026**: o bônus ativou em 3:40 após o `JOIN`, com 0 reconexões. Ao parar o script, o bônus demorou um pouco para sumir. Ver `spikes/s1-twitch-presence/README.md` |
 | S2 — Slot isolado ✅ | O pokeidle.io funciona dentro do Electron com partitions separadas? (login, sem bloqueio de Cloudflare/UA) | **Validado em 27/10/2026** no Windows: 3 alts logadas, sessões mantidas após reiniciar, slot 4 isolado, ~715 MB de RAM com 3 slots |
 | S3 — Segundo plano ✅ | Com o throttling desativado, o jogo continua progredindo com o app minimizado ou na bandeja? | **Validado em 27/10/2026.** Rodada 1: minimizada → 1 fps, então o minimizar nativo foi trocado por "esconder na bandeja". Rodada 2: sem foco, bandeja e coberta tiveram fps, timers e atividade de rede iguais, e o "tempo para upar" caiu em ritmo constante. O jogo é controlado pelo servidor (cliente envia ~2.4 msgs/min). Ver `spikes/s2-s3-slots/README.md` |
+| S4 — Eventos do jogo 🔄 | Como o servidor descreve drops, shinies, capturas raras e problemas nas mensagens WebSocket? | Identificar a mensagem e os campos de cada tipo do F5.2. Gravação pelo app (v0.0.3) + HAR opcional da main. Ver `spikes/s4-ws-events/README.md` |
 
 > Se o S1 falhar, o plano B é carregar o popout de chat oficial (`twitch.tv/popout/<canal>/chat`) numa partition escondida da main. É mais pesado, mas igual a um navegador.
 
 ### Fase 1 — MVP
 
-Ordem sugerida: casca Electron + Svelte → slots (F1) → aba/modal de configurações (F4) → Twitch (F2) → tray/auto-start/status (F3) → CI gerando o `.exe` nos Releases.
+Ordem sugerida: ~~casca Electron + Svelte → slots (F1)~~ (feito na Fase 0) → limpar os spikes + vigia de saúde (F1.11) → aba/modal de configurações (F4) → Twitch (F2) → Notificações (F5, depois do S4) → tray/auto-start/status (F3) → CI gerando o `.exe` nos Releases.
 
 ### Fase 2 — Ideias futuras (não comprometidas)
 
@@ -266,6 +280,8 @@ Ordem sugerida: casca Electron + Svelte → slots (F1) → aba/modal de configur
 - [ ] O app inicia com o Windows, já na bandeja.
 - [ ] Abrir a aba ou o modal de configurações não interrompe o progresso dos slots.
 - [ ] Uma nova tag `v*` gera o instalador nos Releases, e instalar por cima mantém logins e config.
+- [ ] Um slot que para de receber eventos do servidor por 3 min é recarregado sozinho.
+- [ ] A aba Notificações mostra shinies, itens raros, capturas raras e problemas das alts, com horário e alt, e permite filtrar.
 
 ## 10. Riscos
 
@@ -277,6 +293,8 @@ Ordem sugerida: casca Electron + Svelte → slots (F1) → aba/modal de configur
 | Consumo de RAM com 4 slots no PC secundário | Médio | Medir no S2. Desativar slots não usados |
 | SmartScreen avisar sobre o `.exe` sem assinatura | Baixo | Aceitável para uso pessoal ("Executar assim mesmo") |
 | `capturePage()` lento com 4 slots grandes | Baixo | Capturas em paralelo. Se demorar, abrir o modal sobre um fundo escuro simples |
+| Formato das mensagens do jogo mudar numa atualização | Médio | Parser isolado e tolerante: mensagens desconhecidas são ignoradas e logadas. As notificações param, mas o resto do app segue |
+| Mensagens em formato binário (msgpack/protobuf) | Médio | Descobrir no S4. Se forem binárias, decodificar com a lib correspondente |
 | Regras do jogo sobre clientes de terceiros | Médio | O app não automatiza nada e respeita o limite de 4 contas por IP |
 
 ## 11. Questões em aberto

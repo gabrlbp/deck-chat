@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AppState } from '../../shared/ipc'
+  import RecorderBar from './components/RecorderBar.svelte'
   import SlotFrame from './components/SlotFrame.svelte'
   import TopBar from './components/TopBar.svelte'
 
@@ -20,6 +21,7 @@
 {#if app}
   <div class="shell">
     <TopBar {app} />
+    <RecorderBar recorder={app.recorder} />
 
     {#if enabled.length === 0}
       <div class="empty">Nenhum slot ativo. Ative um na barra acima.</div>
@@ -44,7 +46,7 @@
   .shell {
     height: 100%;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
   }
   .grid {
     display: grid;

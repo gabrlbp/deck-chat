@@ -3,6 +3,7 @@ import { IPC, type AppState, type WindowMode } from '../shared/ipc'
 import { registerIpc } from './ipc'
 import { log, logDir } from './logger'
 import { SlotManager } from './slots/SlotManager'
+import { WsRecorder } from './slots/recorder'
 import { loadConfig, saveConfig } from './store'
 import { createTray } from './tray'
 import { createMainWindow } from './window'
@@ -37,13 +38,19 @@ async function bootstrap(): Promise<void> {
     if (!win.isVisible()) return 'tray'
     return win.isFocused() ? 'focused' : 'unfocused'
   }
-  const getState = (): AppState => ({ slots: slots.states(), windowMode: windowMode(), logDir: logDir() })
+  const getState = (): AppState => ({
+    slots: slots.states(),
+    windowMode: windowMode(),
+    logDir: logDir(),
+    recorder: recorder.state(),
+  })
   const broadcast = () => {
     if (!win.isDestroyed()) win.webContents.send(IPC.state, getState())
   }
 
-  const slots = new SlotManager(win, config, () => saveConfig(config), broadcast)
-  registerIpc(win, slots, getState)
+  const recorder = new WsRecorder(broadcast)
+  const slots = new SlotManager(win, config, () => saveConfig(config), broadcast, recorder)
+  registerIpc(win, slots, recorder, getState)
 
   const quit = () => {
     quitting = true
@@ -77,6 +84,7 @@ async function bootstrap(): Promise<void> {
   })
   app.on('before-quit', () => {
     quitting = true
+    recorder.stop('app encerrado')
     slots.destroyAll()
   })
 

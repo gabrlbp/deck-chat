@@ -5,6 +5,9 @@ export const IPC = {
   state: 'app:state',
   openLogs: 'app:openLogs',
   hideToTray: 'app:hideToTray',
+  recorderStart: 'recorder:start',
+  recorderStop: 'recorder:stop',
+  recorderMark: 'recorder:mark',
   setBounds: 'slots:setBounds',
   setMuted: 'slots:setMuted',
   setEnabled: 'slots:setEnabled',
@@ -42,10 +45,13 @@ export type SlotState = {
   probe?: ProbeSample
 }
 
+export type RecorderState = { active: boolean; bytes: number; file?: string }
+
 export type AppState = {
   slots: SlotState[]
   windowMode: WindowMode
   logDir: string
+  recorder: RecorderState
 }
 
 export interface DeckApi {
@@ -54,6 +60,11 @@ export interface DeckApi {
   onState(listener: (state: AppState) => void): () => void
   openLogs(): void
   hideToTray(): void
+  recorder: {
+    start(): void
+    stop(): void
+    mark(text: string): void
+  }
   slots: {
     setBounds(id: SlotId, bounds: Bounds): void
     setMuted(id: SlotId, muted: boolean): void
