@@ -153,13 +153,16 @@ TwitchPresence.connect()
 ```
 
 ```text
-LiveWatcher (a cada ~90s, mesmo token do IRC, sem scope extra)
-  GET api.twitch.tv/helix/streams?user_login=a&user_login=b…   # até 100 por chamada
-    headers: Client-Id, Authorization: Bearer <token>
-  canal na resposta → live = { title, startedAt }, senão offline
-  bônus estimado do canal = ao vivo && agora ≥ max(joinedAt, startedAt) + 4m
-  resumo: "3/7 ao vivo · 3 bônus"
+OfficialChannels (alimentado pelo GameState dos slots, sem chamar a API da Twitch)
+  estado.twitch.oficiais (~a cada 67s, S4) → lista oficial; salva na config (cache)
+  canais = oficiais ∪ extras manuais − desligados
+  mudou a lista → TwitchPresence entra/sai dos canais (JOIN/PART)
+  estado.twitch.lives → ao vivo = { espectadores, visto ao vivo desde }
+  bônus estimado do canal = ao vivo && agora ≥ max(joinedAt, aoVivoDesde) + 4m
+  resumo: "3/16 ao vivo · 3 bônus"
 ```
+
+Por que não a Helix (*Get Streams*): o jogo já envia a mesma informação e define o que conta como "oficial". Uma fonte a menos para manter.
 
 O IRC fica conectado a **todos** os canais ativos o tempo todo, inclusive os offline, porque o bônus acumula entre canais e entrar só quando a live começa não traria vantagem.
 
@@ -235,14 +238,16 @@ deck-chat/
 │   │   │   ├── activity.ts       # DevTools Protocol: tráfego de rede do slot (vigia de saúde + fonte de eventos)
 │   │   │   ├── recorder.ts       # gravação das mensagens WS (spike S4, sai depois)
 │   │   │   └── probe.ts          # medição de throttling (spike S3, sai na Fase 1)
-│   │   ├── events/
-│   │   │   ├── parser.ts         # mensagem WS → evento (shiny, item raro, captura rara, problema); puro e testável
+│   │   ├── game/
+│   │   │   ├── messages.ts       # schemas Valibot das mensagens do jogo (batalha, estado, shiny.captura); tolerantes
+│   │   │   ├── GameState.ts      # junta os "estado" parciais por slot: nick, nível, hunt, bolas, twitch…
+│   │   │   ├── parser.ts         # mensagem → evento (shiny, drop, captura, problema); puro e testável
 │   │   │   └── EventFeed.ts      # feed em memória da sessão, filtros, contador de não lidas
 │   │   └── twitch/
 │   │       ├── auth.ts           # Device Code Flow, validate, refresh
 │   │       ├── irc.ts            # parser de linhas IRC (puro, testável)
 │   │       ├── TwitchPresence.ts # conexão, JOIN, keepalive, reconexão, estados
-│   │       ├── LiveWatcher.ts    # polling Helix Get Streams
+│   │       ├── OfficialChannels.ts # lista oficial + ao vivo vindos do jogo, extras manuais
 │   │       └── bonus.ts          # cálculo puro do bônus estimado por canal
 │   ├── preload/
 │   │   └── index.ts              # contextBridge.exposeInMainWorld('deck', …)

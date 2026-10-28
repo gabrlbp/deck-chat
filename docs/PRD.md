@@ -41,7 +41,7 @@ Um único app que:
 | Bônus depende da máquina/IP? | **Não**: o S1 rodou num notebook Linux e o bônus ativou no jogo aberto no PC Windows. É por conta |
 | Tempo usado pelo app para "bônus ativo (estimado)" | **4:00** (folga sobre os 3:40 medidos) |
 | Autorizar o app desloga a Twitch? | **Não**. No S1, o que derrubou a sessão web do PC Windows foi o **login novo no site** feito no notebook. O token do app não afeta sessões do navegador |
-| Lista de streamers oficiais | Fixa no código do jogo, sem requisição de rede. **Lista manual** no app |
+| Lista de streamers oficiais | **Enviada pelo servidor** no WebSocket (`estado.twitch.oficiais`, 16 canais em 28/10), junto com quem está ao vivo (`twitch.lives`). Não aparece na aba Network como requisição separada, por isso parecia fixa |
 
 ### Fora do escopo (decidido)
 
@@ -87,6 +87,7 @@ PC secundário (Windows)
 | F1.9 | URL do jogo configurável (padrão `https://pokeidle.io`) |
 | F1.10 | Os slots **continuam rodando** enquanto a aba ou um modal de configurações estiver aberto |
 | F1.11 | **Vigia de saúde**: o jogo é controlado pelo servidor e recebe ~60–90 mensagens/min por alt (S3). Se um slot ficar **3 min sem receber nada**, ele vai para o status `sem resposta` e é recarregado sozinho. A barra do slot mostra `eventos/min` |
+| F1.12 | A barra de cada slot mostra os dados da alt vindos do jogo: **nick** (no lugar de "Alt A"), **nível e hunt atual** (`Nv 44 · charmander`) e **pokébolas restantes** (soma das bolas que a automação usa) |
 
 ### F2 — Presença na Twitch (main)
 
@@ -94,12 +95,12 @@ PC secundário (Windows)
 |---|---|
 | F2.1 | Login da main via **Device Code Flow**: o app mostra um código e abre `twitch.tv/activate` **no navegador padrão do Windows**, onde você já está logado, e você só autoriza. **Nunca** abrir o login da Twitch numa janela própria do app: isso conta como dispositivo novo e pode derrubar a sessão do navegador (observado no S1) |
 | F2.2 | Token salvo **criptografado** (DPAPI do Windows via `safeStorage`) e renovado automaticamente |
-| F2.3 | Lista manual de canais nas configurações (adicionar, remover, ligar/desligar cada um) |
+| F2.3 | **Lista de canais importada do jogo**: o servidor envia `estado.twitch.oficiais` a cada ~67s (S4). O app sincroniza sozinho e guarda a última lista na config, para o IRC já entrar nos canais ao abrir, antes dos slots carregarem. Também é possível adicionar **canais extras manuais** e desligar qualquer canal |
 | F2.4 | Uma única conexão IRC (WebSocket) entra em todos os canais ativos. Nada de vídeo nem UI de chat |
 | F2.5 | Reconexão automática **rápida**: o bônus some em < 5 min. Inclui PING próprio a cada 60s (sem PONG em 10s → reconecta), reconexão imediata ao voltar do sleep, backoff de no máximo 60s e reentrada nos canais |
 | F2.6 | Estado por canal: `entrando` → `presente · bônus em 4:00` (contagem regressiva) → `bônus ativo (estimado)`, ou `erro`. O app não enxerga o bônus de fato, só estima pelo tempo desde o `JOIN` |
 | F2.8 | Opção "impedir suspensão do Windows" enquanto o app estiver aberto (`powerSaveBlocker`) |
-| F2.9 | **Detecção de ao vivo**: a cada ~90s o app consulta quais canais da lista estão ao vivo (Helix *Get Streams*, mesmo token, sem scope extra) e mostra título e horário de início |
+| F2.9 | **Detecção de ao vivo pelo próprio jogo**: `estado.twitch.lives` traz os oficiais ao vivo e o número de espectadores. Sem consultar a API da Twitch. O horário em que o canal aparece como ao vivo conta como "início da live" para o F2.10. Canais extras manuais aparecem como "ao vivo: desconhecido" |
 | F2.10 | O bônus só conta ao vivo e **acumula** entre canais, então o app fica sempre no chat de todos os canais ativos (offline não custa nada). O bônus estimado de cada canal é `max(JOIN, início da live) + 4:00` |
 | F2.11 | A barra superior resume o estado, por exemplo `Twitch: 3/7 ao vivo · 3 bônus`. Notificação no tray quando a conexão cai por mais de 30s |
 | F2.7 | Botão "Sair da Twitch" (revoga e apaga o token) |
@@ -119,12 +120,12 @@ PC secundário (Windows)
 | ID | Requisito |
 |---|---|
 | F5.1 | **Aba "Notificações"**: linha do tempo única com os eventos de todas as alts, mostrando horário, alt, ícone do tipo e descrição |
-| F5.2 | Tipos: **shiny** (apareceu/capturou), **itens raros** (lista configurável por nome/ID: boss token, fragmento de chave…), **captura rara** (lendário, mítico, antigo, divino), **problemas** (alt morreu, sem pokebola, sem resposta via F1.11) |
+| F5.2 | Tipos (formato confirmado no S4):<br>• **Shiny** capturado / fugiu (`capturado.pokemon.shiny`, `bola.shiny`, `fugiu.shiny`) e apareceu (hipótese: `spawn.looktype` 7xxxx), com destaque<br>• **Drop**: todo item de `morte.drops` (stones nas hunts normais; boss token, fragmentos e stones nas outlands). Sem lista de raros<br>• **Captura**: toda captura, com os dados do Pokémon (nome, nível, quality, potência, IVs). Sem filtro de raridade<br>• **Problemas**: sem pokébola (`estado.balls`), foi ao Centro Pokémon (`noCentro`/`centroMotivo`), sem resposta (F1.11) |
 | F5.3 | Filtro por alt e por tipo |
 | F5.4 | Fonte: leitura **passiva** das mensagens WebSocket que o servidor envia a cada slot (o mesmo canal do F1.11). Nada é enviado ao jogo |
 | F5.5 | Histórico **só da sessão atual** (em memória). Fechar o app limpa a lista |
 | F5.6 | Sem notificação do Windows: só a aba, com um contador de não lidas no título da aba |
-| F5.7 | O formato das mensagens é descoberto no spike **S4**. O parser fica isolado (`src/main/events/`), porque pode quebrar quando o jogo atualizar. Mensagens não reconhecidas são ignoradas e registradas no log |
+| F5.7 | O formato das mensagens é descoberto no spike **S4**. O parser fica isolado (`src/main/game/`), porque pode quebrar quando o jogo atualizar. Mensagens não reconhecidas são ignoradas e registradas no log |
 
 ### F4 — Configurações
 
@@ -251,7 +252,7 @@ flowchart LR
 | S1 — Presença IRC ✅ | Uma conexão IRC autenticada (sem vídeo) ativa o bônus de streamer na main? | **Validado em 26/10/2026**: o bônus ativou em 3:40 após o `JOIN`, com 0 reconexões. Ao parar o script, o bônus demorou um pouco para sumir. Ver `spikes/s1-twitch-presence/README.md` |
 | S2 — Slot isolado ✅ | O pokeidle.io funciona dentro do Electron com partitions separadas? (login, sem bloqueio de Cloudflare/UA) | **Validado em 27/10/2026** no Windows: 3 alts logadas, sessões mantidas após reiniciar, slot 4 isolado, ~715 MB de RAM com 3 slots |
 | S3 — Segundo plano ✅ | Com o throttling desativado, o jogo continua progredindo com o app minimizado ou na bandeja? | **Validado em 27/10/2026.** Rodada 1: minimizada → 1 fps, então o minimizar nativo foi trocado por "esconder na bandeja". Rodada 2: sem foco, bandeja e coberta tiveram fps, timers e atividade de rede iguais, e o "tempo para upar" caiu em ritmo constante. O jogo é controlado pelo servidor (cliente envia ~2.4 msgs/min). Ver `spikes/s2-s3-slots/README.md` |
-| S4 — Eventos do jogo 🔄 | Como o servidor descreve drops, shinies, capturas raras e problemas nas mensagens WebSocket? | Identificar a mensagem e os campos de cada tipo do F5.2. Gravação pelo app (v0.0.3) + HAR opcional da main. Ver `spikes/s4-ws-events/README.md` |
+| S4 — Eventos do jogo ✅ | Como o servidor descreve drops, shinies, capturas e problemas nas mensagens WebSocket? | **Validado em 28/10/2026**: JSON texto com tipo em `t` (`batalha`, `estado`, `chat`, `shiny.captura`…). Drops, capturas, shiny e munição mapeados. **Bônus:** o jogo envia a lista oficial de streamers e quem está ao vivo. Ver `spikes/s4-ws-events/README.md` |
 
 > Se o S1 falhar, o plano B é carregar o popout de chat oficial (`twitch.tv/popout/<canal>/chat`) numa partition escondida da main. É mais pesado, mas igual a um navegador.
 
