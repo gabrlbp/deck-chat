@@ -15,10 +15,13 @@ type Slot = {
   bounds: Bounds
   msgsPerMin?: number
   crashReload?: NodeJS.Timeout
+  failedAt?: number
 }
 
 const HIDDEN: Bounds = { x: 0, y: 0, width: 0, height: 0 }
 const CRASH_RELOAD_MS = 3000
+/** Página que falhou ao carregar (ex.: internet caiu) é tentada de novo a cada minuto. */
+const ERROR_RETRY_MS = 60_000
 /** O servidor manda ~60–90 mensagens/min por alt (S3); 3 min de silêncio = jogo parado. */
 const UNRESPONSIVE_MS = 3 * 60_000
 
@@ -109,6 +112,13 @@ export class SlotManager {
       if (!slot.view || !slot.tap) continue
       slot.msgsPerMin = slot.tap.takeRatePerMin(now)
 
+      if (slot.status === 'error' && slot.failedAt !== undefined && now - slot.failedAt > ERROR_RETRY_MS) {
+        log(`[${cfg.id}] tentando carregar de novo após erro`)
+        slot.failedAt = undefined
+        void slot.view.webContents.loadURL(this.config.gameUrl)
+        continue
+      }
+
       const silent = slot.tap.silentForMs(now)
       if (slot.status === 'ok' && silent !== null && silent > UNRESPONSIVE_MS) {
         log(`[${cfg.id}] sem mensagens do jogo há ${Math.round(silent / 1000)}s, recarregando`)
@@ -196,6 +206,7 @@ export class SlotManager {
       // -3 = ERR_ABORTED (navegação substituída por outra), não é erro de verdade
       if (!isMainFrame || code === -3) return
       log(`[${cfg.id}] falha ao carregar ${url}: ${code} ${description}`)
+      slot.failedAt = Date.now()
       this.setStatus(cfg.id, 'error')
     })
     wc.on('unresponsive', () => log(`[${cfg.id}] página não responde`))

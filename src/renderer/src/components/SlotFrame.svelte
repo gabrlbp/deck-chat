@@ -11,7 +11,7 @@
   const statusLabel: Record<SlotStatus, string> = {
     loading: 'carregando',
     ok: 'ok',
-    error: 'erro ao carregar',
+    error: 'erro ao carregar, tentando de novo em 1 min',
     crashed: 'travou, recarregando',
     unresponsive: 'sem resposta, recarregando',
     disabled: 'desativado',
