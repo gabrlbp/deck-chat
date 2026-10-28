@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { appendFileSync, existsSync, mkdirSync } from 'node:fs'
+import { appendFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 let dirReady = false
@@ -18,10 +18,4 @@ export function log(...parts: unknown[]): void {
   const line = `${new Date().toISOString()} ${text}`
   console.log(line)
   appendFileSync(join(logDir(), 'deck.log'), `${line}\n`)
-}
-
-export function appendCsv(file: string, header: string, row: string): void {
-  const path = join(logDir(), file)
-  if (!existsSync(path)) appendFileSync(path, `${header}\n`)
-  appendFileSync(path, `${row}\n`)
 }

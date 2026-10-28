@@ -1,14 +1,14 @@
 import { app } from 'electron'
-import { IPC, type AppState, type WindowMode } from '../shared/ipc'
+import { IPC, type AppState } from '../shared/ipc'
+import { EventFeed } from './game/EventFeed'
 import { registerIpc } from './ipc'
-import { log, logDir } from './logger'
+import { log } from './logger'
 import { SlotManager } from './slots/SlotManager'
-import { WsRecorder } from './slots/recorder'
 import { loadConfig, saveConfig } from './store'
 import { createTray } from './tray'
 import { createMainWindow } from './window'
 
-const PROBE_EVERY_MS = 30_000
+const TICK_MS = 10_000
 
 // Remove "Electron/x" e "deck-chat/x" do user-agent: alguns sites bloqueiam ou tratam diferente.
 app.userAgentFallback = app.userAgentFallback.replace(/\s(?:Electron|deck-chat)\/\S+/g, '')
@@ -32,25 +32,16 @@ async function bootstrap(): Promise<void> {
   const win = createMainWindow(startHidden)
   let quitting = false
 
-  const windowMode = (): WindowMode => {
-    // no Windows, janela minimizada também tem isVisible() = false: checar minimizada primeiro
-    if (win.isMinimized()) return 'minimized'
-    if (!win.isVisible()) return 'tray'
-    return win.isFocused() ? 'focused' : 'unfocused'
-  }
-  const getState = (): AppState => ({
-    slots: slots.states(),
-    windowMode: windowMode(),
-    logDir: logDir(),
-    recorder: recorder.state(),
-  })
+  const getState = (): AppState => ({ slots: slots.states() })
   const broadcast = () => {
     if (!win.isDestroyed()) win.webContents.send(IPC.state, getState())
   }
 
-  const recorder = new WsRecorder(broadcast)
-  const slots = new SlotManager(win, config, () => saveConfig(config), broadcast, recorder)
-  registerIpc(win, slots, recorder, getState)
+  const feed = new EventFeed((event) => {
+    log(`[evento] ${event.slot} ${event.nick ?? '?'} ${event.kind}: ${event.title}${event.detail ? ` (${event.detail})` : ''}`)
+  })
+  const slots = new SlotManager(win, config, () => saveConfig(config), broadcast, (event) => feed.push(event))
+  registerIpc(win, slots, getState)
 
   const quit = () => {
     quitting = true
@@ -64,18 +55,12 @@ async function bootstrap(): Promise<void> {
     event.preventDefault()
     win.hide()
   })
-  // rede de segurança: minimizar ainda é possível por atalhos do Windows (ex.: Win+↓)
+  // minimizada, a janela recebe ~1 frame/s (S3). Atalhos do Windows (ex.: Win+↓) ainda minimizam.
   win.on('minimize', () => {
     log('minimizar interceptado → bandeja')
     win.restore()
     win.hide()
   })
-  for (const ev of ['show', 'hide', 'minimize', 'restore', 'focus', 'blur'] as const) {
-    win.on(ev as 'show', () => {
-      log(`janela: ${ev}`)
-      broadcast()
-    })
-  }
 
   app.on('second-instance', () => {
     if (win.isMinimized()) win.restore()
@@ -84,11 +69,10 @@ async function bootstrap(): Promise<void> {
   })
   app.on('before-quit', () => {
     quitting = true
-    recorder.stop('app encerrado')
     slots.destroyAll()
   })
 
   slots.start()
-  setInterval(() => void slots.probeAll(windowMode()), PROBE_EVERY_MS)
+  setInterval(() => slots.tick(), TICK_MS)
   log(`Deck Chat iniciado (Electron ${process.versions.electron}, dados em ${app.getPath('userData')})`)
 }

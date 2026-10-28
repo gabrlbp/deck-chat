@@ -5,9 +5,6 @@ export const IPC = {
   state: 'app:state',
   openLogs: 'app:openLogs',
   hideToTray: 'app:hideToTray',
-  recorderStart: 'recorder:start',
-  recorderStop: 'recorder:stop',
-  recorderMark: 'recorder:mark',
   setBounds: 'slots:setBounds',
   setMuted: 'slots:setMuted',
   setEnabled: 'slots:setEnabled',
@@ -15,23 +12,17 @@ export const IPC = {
   reload: 'slots:reload',
 } as const
 
-export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'disabled'
+export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
 
-export type WindowMode = 'focused' | 'unfocused' | 'minimized' | 'tray'
-
-/** Amostra do spike S3: o quanto o Chromium está segurando timers e frames do slot. */
-export type ProbeSample = {
-  at: number
-  /** ticks de setInterval(1s) recebidos / esperados. 1 = sem throttling */
-  timerRatio: number
-  /** frames de requestAnimationFrame por segundo */
-  fps: number
-  visibility: 'visible' | 'hidden' | 'prerender'
-  windowMode: WindowMode
-  /** atividade de rede do slot, por minuto */
-  httpPerMin: number
-  wsSentPerMin: number
-  wsRecvPerMin: number
+/** Dados da alt lidos das mensagens do jogo. Ausentes até o jogo enviar. */
+export type SlotGameInfo = {
+  nick?: string
+  level?: number
+  hunt?: string
+  /** soma das pokébolas que a automação da alt usa */
+  balls?: number
+  /** mensagens recebidas do servidor por minuto (vigia de saúde) */
+  msgsPerMin?: number
 }
 
 export type SlotState = {
@@ -41,17 +32,23 @@ export type SlotState = {
   muted: boolean
   zoom: number
   status: SlotStatus
-  title?: string
-  probe?: ProbeSample
+  game: SlotGameInfo
 }
 
-export type RecorderState = { active: boolean; bytes: number; file?: string }
+export type GameEventKind = 'shiny' | 'drop' | 'capture' | 'problem'
+
+export type GameEvent = {
+  id: string
+  at: number
+  slot: SlotId
+  nick?: string
+  kind: GameEventKind
+  title: string
+  detail?: string
+}
 
 export type AppState = {
   slots: SlotState[]
-  windowMode: WindowMode
-  logDir: string
-  recorder: RecorderState
 }
 
 export interface DeckApi {
@@ -60,11 +57,6 @@ export interface DeckApi {
   onState(listener: (state: AppState) => void): () => void
   openLogs(): void
   hideToTray(): void
-  recorder: {
-    start(): void
-    stop(): void
-    mark(text: string): void
-  }
   slots: {
     setBounds(id: SlotId, bounds: Bounds): void
     setMuted(id: SlotId, muted: boolean): void

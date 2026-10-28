@@ -2,7 +2,6 @@ import { ipcMain, shell, type BrowserWindow, type WebContents } from 'electron'
 import * as v from 'valibot'
 import { IPC, type AppState } from '../shared/ipc'
 import {
-  MarkPayload,
   SetBoundsPayload,
   SetEnabledPayload,
   SetMutedPayload,
@@ -11,14 +10,8 @@ import {
 } from '../shared/schemas'
 import { log, logDir } from './logger'
 import type { SlotManager } from './slots/SlotManager'
-import type { WsRecorder } from './slots/recorder'
 
-export function registerIpc(
-  win: BrowserWindow,
-  slots: SlotManager,
-  recorder: WsRecorder,
-  getState: () => AppState,
-): void {
+export function registerIpc(win: BrowserWindow, slots: SlotManager, getState: () => AppState): void {
   const fromUi = (sender: WebContents) => sender.id === win.webContents.id
 
   // canal fire-and-forget com payload validado
@@ -42,17 +35,9 @@ export function registerIpc(
   ipcMain.on(IPC.openLogs, (event) => {
     if (fromUi(event.sender)) void shell.openPath(logDir())
   })
-
   ipcMain.on(IPC.hideToTray, (event) => {
     if (fromUi(event.sender)) win.hide()
   })
-  ipcMain.on(IPC.recorderStart, (event) => {
-    if (fromUi(event.sender)) recorder.start()
-  })
-  ipcMain.on(IPC.recorderStop, (event) => {
-    if (fromUi(event.sender)) recorder.stop()
-  })
-  on(IPC.recorderMark, MarkPayload, ({ text }) => recorder.mark(text))
 
   on(IPC.setBounds, SetBoundsPayload, ({ id, bounds }) => slots.setBounds(id, bounds))
   on(IPC.setMuted, SetMutedPayload, ({ id, muted }) => slots.setMuted(id, muted))

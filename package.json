@@ -1,6 +1,6 @@
 {
   "name": "deck-chat",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "description": "Contas do PokeIdle em grid + presença da main nos chats da Twitch",
   "main": "./out/main/index.js",
@@ -11,6 +11,7 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "svelte-check --tsconfig ./tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "test": "vitest run",
     "dist:win": "electron-vite build && electron-builder --win --x64",
     "dist:win:zip": "electron-vite build && electron-builder --win zip --x64"
   },
@@ -24,7 +25,8 @@
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.7",
     "typescript": "^6.0.3",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "valibot": "^1.5.0"

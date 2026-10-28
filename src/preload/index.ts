@@ -10,11 +10,6 @@ const api: DeckApi = {
   },
   openLogs: () => ipcRenderer.send(IPC.openLogs),
   hideToTray: () => ipcRenderer.send(IPC.hideToTray),
-  recorder: {
-    start: () => ipcRenderer.send(IPC.recorderStart),
-    stop: () => ipcRenderer.send(IPC.recorderStop),
-    mark: (text) => ipcRenderer.send(IPC.recorderMark, { text }),
-  },
   slots: {
     setBounds: (id, bounds) => ipcRenderer.send(IPC.setBounds, { id, bounds }),
     setMuted: (id, muted) => ipcRenderer.send(IPC.setMuted, { id, muted }),

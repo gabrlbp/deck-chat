@@ -13,16 +13,22 @@
     ok: 'ok',
     error: 'erro ao carregar',
     crashed: 'travou, recarregando',
+    unresponsive: 'sem resposta, recarregando',
     disabled: 'desativado',
   }
 
-  const probeText = $derived.by(() => {
-    const p = slot.probe
-    if (!p) return 'medindo…'
-    const net = `rede ${Math.round(p.httpPerMin)} http · ↑${Math.round(p.wsSentPerMin)} ↓${Math.round(p.wsRecvPerMin)} ws /min`
-    return `timers ${Math.round(p.timerRatio * 100)}% · ${Math.round(p.fps)} fps · ${p.visibility} · ${net}`
+  const numberFormat = new Intl.NumberFormat('pt-BR')
+
+  const gameText = $derived.by(() => {
+    const g = slot.game
+    const parts = [
+      g.level !== undefined ? `Nv ${g.level}` : null,
+      g.hunt ?? null,
+      g.balls !== undefined ? `🔴 ${numberFormat.format(g.balls)}` : null,
+    ].filter((part) => part !== null)
+    return parts.join(' · ')
   })
-  const throttled = $derived(slot.probe ? slot.probe.timerRatio < 0.9 : false)
+  const noBalls = $derived(slot.game.balls === 0)
 
   function zoomBy(delta: number) {
     const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, slot.zoom + delta))
@@ -59,10 +65,19 @@
 
 <section class="frame">
   <header>
-    <span class="dot {slot.status}"></span>
-    <strong>{slot.label}</strong>
-    <span class="muted">{statusLabel[slot.status]}</span>
-    <span class="probe" class:warn={throttled} title="Spike S3: timers e frames do slot">{probeText}</span>
+    <span class="dot {slot.status}" title={statusLabel[slot.status]}></span>
+    <strong>{slot.game.nick ?? slot.label}</strong>
+    {#if slot.status !== 'ok'}
+      <span class="muted">{statusLabel[slot.status]}</span>
+    {/if}
+    {#if gameText}
+      <span class="game" class:warn={noBalls}>{gameText}</span>
+    {/if}
+    {#if slot.game.msgsPerMin !== undefined}
+      <span class="muted" title="Mensagens do servidor por minuto (vigia de saúde)">
+        {Math.round(slot.game.msgsPerMin)}/min
+      </span>
+    {/if}
 
     <div class="actions">
       <button title="Diminuir zoom" onclick={() => zoomBy(-0.1)}>−</button>
@@ -112,21 +127,22 @@
     background: var(--warn);
   }
   .dot.error,
-  .dot.crashed {
+  .dot.crashed,
+  .dot.unresponsive {
     background: var(--err);
   }
   .muted,
-  .probe,
+  .game,
   .zoom {
     color: var(--muted);
     font-size: 12px;
   }
-  .probe {
+  .game {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .probe.warn {
-    color: var(--warn);
+  .game.warn {
+    color: var(--err);
   }
   .actions {
     display: flex;

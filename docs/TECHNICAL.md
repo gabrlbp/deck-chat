@@ -235,12 +235,11 @@ deck-chat/
 │   │   ├── slots/
 │   │   │   ├── SlotManager.ts    # cria/destroi views, bounds, mute, reload, crash, visibilidade, capturePage
 │   │   │   ├── policy.ts         # navegação permitida, popups about:blank, window open handler
-│   │   │   ├── activity.ts       # DevTools Protocol: tráfego de rede do slot (vigia de saúde + fonte de eventos)
-│   │   │   ├── recorder.ts       # gravação das mensagens WS (spike S4, sai depois)
-│   │   │   └── probe.ts          # medição de throttling (spike S3, sai na Fase 1)
+│   │   │   └── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde
 │   │   ├── game/
 │   │   │   ├── messages.ts       # schemas Valibot das mensagens do jogo (batalha, estado, shiny.captura); tolerantes
 │   │   │   ├── GameState.ts      # junta os "estado" parciais por slot: nick, nível, hunt, bolas, twitch…
+│   │   │   ├── events.ts         # EventDraft (evento sem id/horário/slot)
 │   │   │   ├── parser.ts         # mensagem → evento (shiny, drop, captura, problema); puro e testável
 │   │   │   └── EventFeed.ts      # feed em memória da sessão, filtros, contador de não lidas
 │   │   └── twitch/

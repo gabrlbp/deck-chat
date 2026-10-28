@@ -1,41 +1,49 @@
+import { randomUUID } from 'node:crypto'
 import { WebContentsView, type BrowserWindow } from 'electron'
+import type { GameEvent, SlotGameInfo, SlotState, SlotStatus } from '../../shared/ipc'
 import type { Bounds, Config, SlotConfig, SlotId } from '../../shared/schemas'
-import type { ProbeSample, SlotState, SlotStatus, WindowMode } from '../../shared/ipc'
-import { appendCsv, log } from '../logger'
-import { ActivityMonitor } from './activity'
+import type { EventDraft } from '../game/events'
+import { ballsLeft } from '../game/GameState'
+import { log } from '../logger'
+import { GameTap } from './GameTap'
 import { applySlotPolicy } from './policy'
-import { installProbe, readProbe } from './probe'
-import type { WsRecorder } from './recorder'
 
 type Slot = {
   view: WebContentsView | null
-  activity: ActivityMonitor | null
+  tap: GameTap | null
   status: SlotStatus
-  title?: string
   bounds: Bounds
-  probe?: ProbeSample
+  msgsPerMin?: number
   crashReload?: NodeJS.Timeout
 }
 
 const HIDDEN: Bounds = { x: 0, y: 0, width: 0, height: 0 }
 const CRASH_RELOAD_MS = 3000
+/** O servidor manda ~60–90 mensagens/min por alt (S3); 3 min de silêncio = jogo parado. */
+const UNRESPONSIVE_MS = 3 * 60_000
 
 export class SlotManager {
   private readonly win: BrowserWindow
   private readonly config: Config
   private readonly persist: () => void
   private readonly onChange: () => void
-  private readonly recorder: WsRecorder
+  private readonly onEvent: (event: GameEvent) => void
   private readonly slots = new Map<SlotId, Slot>()
 
-  constructor(win: BrowserWindow, config: Config, persist: () => void, onChange: () => void, recorder: WsRecorder) {
+  constructor(
+    win: BrowserWindow,
+    config: Config,
+    persist: () => void,
+    onChange: () => void,
+    onEvent: (event: GameEvent) => void,
+  ) {
     this.win = win
     this.config = config
     this.persist = persist
     this.onChange = onChange
-    this.recorder = recorder
+    this.onEvent = onEvent
     for (const cfg of config.slots) {
-      this.slots.set(cfg.id, { view: null, activity: null, status: 'disabled', bounds: HIDDEN })
+      this.slots.set(cfg.id, { view: null, tap: null, status: 'disabled', bounds: HIDDEN })
     }
   }
 
@@ -47,7 +55,15 @@ export class SlotManager {
   states(): SlotState[] {
     return this.config.slots.map((cfg) => {
       const slot = this.slot(cfg.id)
-      return { ...cfg, status: slot.status, title: slot.title, probe: slot.probe }
+      return { ...cfg, status: slot.status, game: this.gameInfo(slot) }
+    })
+  }
+
+  /** Dados do jogo de cada slot ativo (ex.: lista oficial de streamers para a Twitch). */
+  snapshots() {
+    return this.config.slots.flatMap((cfg) => {
+      const tap = this.slot(cfg.id).tap
+      return tap ? [{ id: cfg.id, snapshot: tap.game.snapshot }] : []
     })
   }
 
@@ -86,43 +102,23 @@ export class SlotManager {
     this.slot(id).view?.webContents.reload()
   }
 
-  async probeAll(windowMode: WindowMode): Promise<void> {
+  /** Chamado periodicamente: atualiza mensagens/min e recarrega slots em silêncio (F1.11). */
+  tick(now = Date.now()): void {
     for (const cfg of this.config.slots) {
       const slot = this.slot(cfg.id)
-      if (!slot.view || slot.status !== 'ok') continue
-      try {
-        const raw = await readProbe(slot.view.webContents)
-        const net = slot.activity?.take() ?? { http: 0, wsSent: 0, wsRecv: 0 }
-        if (!raw || raw.ms < 1000) continue
-        const seconds = raw.ms / 1000
-        const perMin = (n: number) => (n * 60) / seconds
-        slot.probe = {
-          at: Date.now(),
-          timerRatio: raw.ticks / seconds,
-          fps: raw.frames / seconds,
-          visibility: raw.visibility,
-          windowMode,
-          httpPerMin: perMin(net.http),
-          wsSentPerMin: perMin(net.wsSent),
-          wsRecvPerMin: perMin(net.wsRecv),
-        }
-        appendCsv(
-          's3-probe-v2.csv',
-          'time,slot,window_mode,visibility,timer_ratio,fps,http_min,ws_sent_min,ws_recv_min',
-          [
-            new Date(slot.probe.at).toISOString(),
-            cfg.id,
-            windowMode,
-            raw.visibility,
-            slot.probe.timerRatio.toFixed(3),
-            slot.probe.fps.toFixed(1),
-            slot.probe.httpPerMin.toFixed(1),
-            slot.probe.wsSentPerMin.toFixed(1),
-            slot.probe.wsRecvPerMin.toFixed(1),
-          ].join(','),
-        )
-      } catch (err) {
-        log(`[${cfg.id}] falha ao ler probe: ${String(err)}`)
+      if (!slot.view || !slot.tap) continue
+      slot.msgsPerMin = slot.tap.takeRatePerMin(now)
+
+      const silent = slot.tap.silentForMs(now)
+      if (slot.status === 'ok' && silent !== null && silent > UNRESPONSIVE_MS) {
+        log(`[${cfg.id}] sem mensagens do jogo há ${Math.round(silent / 1000)}s, recarregando`)
+        this.setStatus(cfg.id, 'unresponsive')
+        this.emit(cfg.id, {
+          kind: 'problem',
+          title: 'Sem resposta do jogo',
+          detail: `${Math.round(silent / 60_000)} min sem mensagens do servidor, slot recarregado`,
+        })
+        slot.view.webContents.reload()
       }
     }
     this.onChange()
@@ -130,6 +126,29 @@ export class SlotManager {
 
   destroyAll(): void {
     for (const cfg of this.config.slots) this.destroy(cfg.id)
+  }
+
+  private gameInfo(slot: Slot): SlotGameInfo {
+    const s = slot.tap?.game.snapshot
+    if (!s) return {}
+    return {
+      nick: s.nick,
+      level: s.level,
+      hunt: s.hunt ?? undefined,
+      balls: ballsLeft(s),
+      msgsPerMin: slot.msgsPerMin,
+    }
+  }
+
+  private emit(id: SlotId, draft: EventDraft): void {
+    const event: GameEvent = {
+      ...draft,
+      id: randomUUID(),
+      at: Date.now(),
+      slot: id,
+      nick: this.slot(id).tap?.game.snapshot.nick,
+    }
+    this.onEvent(event)
   }
 
   private create(cfg: SlotConfig): void {
@@ -153,17 +172,20 @@ export class SlotManager {
     const wc = view.webContents
     wc.setAudioMuted(cfg.muted)
     applySlotPolicy(wc, this.config.gameUrl, cfg.id)
-    const activity = new ActivityMonitor(wc, cfg.id, this.recorder)
-    slot.activity = activity
+    const tap = new GameTap(wc, cfg.id, (drafts) => {
+      for (const draft of drafts) this.emit(cfg.id, draft)
+    })
+    slot.tap = tap
 
     // só a navegação da página principal conta; iframes e pushState não mudam o status
     wc.on('did-start-navigation', (details) => {
-      if (details.isMainFrame && !details.isSameDocument) this.setStatus(cfg.id, 'loading')
+      if (!details.isMainFrame || details.isSameDocument) return
+      tap.resetForNavigation()
+      this.setStatus(cfg.id, 'loading')
     })
     wc.on('did-finish-load', () => {
       wc.setZoomFactor(this.cfg(cfg.id).zoom)
-      installProbe(wc).catch((err) => log(`[${cfg.id}] falha ao instalar probe: ${String(err)}`))
-      void activity.ensureAttached()
+      void tap.ensureAttached()
       log(`[${cfg.id}] carregado: ${wc.getURL()} "${wc.getTitle()}"`)
       this.setStatus(cfg.id, 'ok')
     })
@@ -175,10 +197,6 @@ export class SlotManager {
       if (!isMainFrame || code === -3) return
       log(`[${cfg.id}] falha ao carregar ${url}: ${code} ${description}`)
       this.setStatus(cfg.id, 'error')
-    })
-    wc.on('page-title-updated', (_event, title) => {
-      slot.title = title
-      this.onChange()
     })
     wc.on('unresponsive', () => log(`[${cfg.id}] página não responde`))
     wc.on('responsive', () => log(`[${cfg.id}] página voltou a responder`))
@@ -193,7 +211,7 @@ export class SlotManager {
 
     this.win.contentView.addChildView(view)
     // não esperar: o Network.enable só responde depois que a página existe
-    void activity.ensureAttached()
+    void tap.ensureAttached()
     void wc.loadURL(this.config.gameUrl)
     log(`[${cfg.id}] criado (partition persist:${cfg.id})`)
   }
@@ -205,10 +223,9 @@ export class SlotManager {
     this.win.contentView.removeChildView(slot.view)
     slot.view.webContents.close()
     slot.view = null
-    slot.activity = null
+    slot.tap = null
     slot.status = 'disabled'
-    slot.title = undefined
-    slot.probe = undefined
+    slot.msgsPerMin = undefined
   }
 
   private setStatus(id: SlotId, status: SlotStatus): void {
