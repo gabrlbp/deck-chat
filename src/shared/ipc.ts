@@ -14,6 +14,13 @@ export const IPC = {
   setVisible: 'slots:setVisible',
   capture: 'slots:capture',
   clearSession: 'slots:clearSession',
+  twitchLogin: 'twitch:login',
+  twitchCancelLogin: 'twitch:cancelLogin',
+  twitchOpenActivate: 'twitch:openActivate',
+  twitchLogout: 'twitch:logout',
+  twitchSetChannelEnabled: 'twitch:setChannelEnabled',
+  twitchAddExtra: 'twitch:addExtra',
+  twitchRemoveExtra: 'twitch:removeExtra',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -23,8 +30,6 @@ export type SlotGameInfo = {
   nick?: string
   level?: number
   hunt?: string
-  /** soma das pokébolas que a automação da alt usa */
-  balls?: number
   /** mensagens recebidas do servidor por minuto (vigia de saúde) */
   msgsPerMin?: number
 }
@@ -56,9 +61,38 @@ export type SlotSnapshot = { id: SlotId; dataUrl: string; bounds: Bounds }
 
 export type AppInfo = { version: string; electron: string; dataDir: string }
 
+export type TwitchAuth =
+  | { state: 'disconnected' }
+  | { state: 'pending'; userCode: string; verificationUri: string; expiresAt: number }
+  | { state: 'connected'; login: string }
+  | { state: 'reauth'; reason: string }
+
+export type TwitchConnection = 'offline' | 'connecting' | 'connected'
+
+export type ChannelView = {
+  login: string
+  nome: string
+  source: 'oficial' | 'extra'
+  enabled: boolean
+  /** `null` = desconhecido (canal extra, ou nenhum slot logado para o jogo informar) */
+  live: boolean | null
+  viewers?: number
+  /** a main está no chat (JOIN confirmado) */
+  present: boolean
+  /** quando o bônus estimado ativa: max(entrada no chat, início da live) + 4 min */
+  bonusAt?: number
+}
+
+export type TwitchState = {
+  auth: TwitchAuth
+  connection: TwitchConnection
+  channels: ChannelView[]
+}
+
 export type AppState = {
   slots: SlotState[]
   info: AppInfo
+  twitch: TwitchState
 }
 
 export interface DeckApi {
@@ -78,5 +112,14 @@ export interface DeckApi {
     setVisible(visible: boolean): void
     capture(): Promise<SlotSnapshot[]>
     clearSession(id: SlotId): Promise<void>
+  }
+  twitch: {
+    login(): void
+    cancelLogin(): void
+    openActivate(): void
+    logout(): void
+    setChannelEnabled(login: string, enabled: boolean): void
+    addExtra(login: string): void
+    removeExtra(login: string): void
   }
 }

@@ -2,7 +2,9 @@ import { ipcMain, shell, type BrowserWindow, type WebContents } from 'electron'
 import * as v from 'valibot'
 import { IPC, type AppState } from '../shared/ipc'
 import {
+  ChannelPayload,
   SetBoundsPayload,
+  SetChannelEnabledPayload,
   SetEnabledPayload,
   SetLabelPayload,
   SetMutedPayload,
@@ -12,8 +14,14 @@ import {
 } from '../shared/schemas'
 import { log, logDir } from './logger'
 import type { SlotManager } from './slots/SlotManager'
+import type { TwitchService } from './twitch/TwitchService'
 
-export function registerIpc(win: BrowserWindow, slots: SlotManager, getState: () => AppState): void {
+export function registerIpc(
+  win: BrowserWindow,
+  slots: SlotManager,
+  twitch: TwitchService,
+  getState: () => AppState,
+): void {
   const fromUi = (sender: WebContents) => sender.id === win.webContents.id
 
   // canal fire-and-forget com payload validado
@@ -59,4 +67,14 @@ export function registerIpc(win: BrowserWindow, slots: SlotManager, getState: ()
   on(IPC.reload, SlotIdPayload, ({ id }) => slots.reload(id))
   on(IPC.setLabel, SetLabelPayload, ({ id, label }) => slots.setLabel(id, label))
   on(IPC.setVisible, SetVisiblePayload, ({ visible }) => slots.setVisible(visible))
+
+  on(IPC.twitchLogin, v.undefined(), () => void twitch.login())
+  on(IPC.twitchCancelLogin, v.undefined(), () => twitch.cancelLogin())
+  on(IPC.twitchOpenActivate, v.undefined(), () => twitch.openActivate())
+  on(IPC.twitchLogout, v.undefined(), () => void twitch.logout())
+  on(IPC.twitchSetChannelEnabled, SetChannelEnabledPayload, ({ login, enabled }) =>
+    twitch.setChannelEnabled(login, enabled),
+  )
+  on(IPC.twitchAddExtra, ChannelPayload, ({ login }) => twitch.addExtra(login))
+  on(IPC.twitchRemoveExtra, ChannelPayload, ({ login }) => twitch.removeExtra(login))
 }

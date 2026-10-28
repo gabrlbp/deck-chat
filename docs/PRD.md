@@ -87,7 +87,7 @@ PC secundário (Windows)
 | F1.9 | URL do jogo configurável (padrão `https://pokeidle.io`) |
 | F1.10 | Os slots **continuam rodando** enquanto a aba ou um modal de configurações estiver aberto |
 | F1.11 | **Vigia de saúde**: o jogo é controlado pelo servidor e recebe ~60–90 mensagens/min por alt (S3). Se um slot ficar **3 min sem receber nada**, ele vai para o status `sem resposta` e é recarregado sozinho. A barra do slot mostra `eventos/min` |
-| F1.12 | A barra de cada slot mostra os dados da alt vindos do jogo: **nick** (no lugar de "Alt A"), **nível e hunt atual** (`Nv 44 · charmander`) e **pokébolas restantes** (soma das bolas que a automação usa) |
+| F1.12 | A barra de cada slot mostra os dados da alt vindos do jogo: **nick** (no lugar de "Alt A") e **nível e hunt atual** (`Nv 44 · charmander`). As pokébolas não aparecem na barra; são usadas só para o aviso "acabaram as pokébolas" (F5.2) |
 
 ### F2 — Presença na Twitch (main)
 
@@ -258,7 +258,7 @@ flowchart LR
 
 ### Fase 1 — MVP
 
-Ordem sugerida: ~~casca Electron + Svelte → slots (F1)~~ (feito na Fase 0) → ~~limpar os spikes + vigia de saúde (F1.11, F1.12)~~ (v0.0.4) → ~~aba/modal de configurações (F4)~~ (v0.0.5) → Twitch (F2) → Notificações (F5, depois do S4) → tray/auto-start/status (F3) → CI gerando o `.exe` nos Releases.
+Ordem sugerida: ~~casca Electron + Svelte → slots (F1)~~ (feito na Fase 0) → ~~limpar os spikes + vigia de saúde (F1.11, F1.12)~~ (v0.0.4) → ~~aba/modal de configurações (F4)~~ (v0.0.5) → ~~Twitch (F2)~~ (v0.0.6) → Notificações (F5, depois do S4) → tray/auto-start/status (F3) → CI gerando o `.exe` nos Releases.
 
 ### Fase 2 — Ideias futuras (não comprometidas)
 

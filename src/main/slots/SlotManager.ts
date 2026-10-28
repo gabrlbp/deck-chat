@@ -3,7 +3,6 @@ import { WebContentsView, session, type BrowserWindow } from 'electron'
 import type { GameEvent, SlotGameInfo, SlotSnapshot, SlotState, SlotStatus } from '../../shared/ipc'
 import type { Bounds, Config, SlotConfig, SlotId } from '../../shared/schemas'
 import type { EventDraft } from '../game/events'
-import { ballsLeft } from '../game/GameState'
 import { log } from '../logger'
 import { GameTap } from './GameTap'
 import { applySlotPolicy } from './policy'
@@ -194,7 +193,6 @@ export class SlotManager {
       nick: s.nick,
       level: s.level,
       hunt: s.hunt ?? undefined,
-      balls: ballsLeft(s),
       msgsPerMin: slot.msgsPerMin,
     }
   }

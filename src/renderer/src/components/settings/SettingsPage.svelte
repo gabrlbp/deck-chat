@@ -1,27 +1,28 @@
 <script lang="ts">
   import type { AppState } from '../../../../shared/ipc'
   import { slotName } from '../../lib/slots'
+  import { ui, type SettingsSection } from '../../lib/ui.svelte'
   import SlotSettings from './SlotSettings.svelte'
+  import TwitchSection from './TwitchSection.svelte'
 
   let { app }: { app: AppState } = $props()
 
-  type Section = 'slots' | 'about'
-  const sections: { id: Section; label: string }[] = [
+  const sections: { id: SettingsSection; label: string }[] = [
     { id: 'slots', label: 'Slots' },
+    { id: 'twitch', label: 'Twitch' },
     { id: 'about', label: 'Sobre' },
   ]
-  let section = $state<Section>('slots')
 </script>
 
 <div class="page">
   <nav>
     {#each sections as s (s.id)}
-      <button class:active={section === s.id} onclick={() => (section = s.id)}>{s.label}</button>
+      <button class:active={ui.settingsSection === s.id} onclick={() => (ui.settingsSection = s.id)}>{s.label}</button>
     {/each}
   </nav>
 
   <div class="content">
-    {#if section === 'slots'}
+    {#if ui.settingsSection === 'slots'}
       <h2>Slots</h2>
       <p class="hint">Cada slot é um navegador separado: o login fica salvo mesmo desativando o slot.</p>
       <div class="cards">
@@ -35,6 +36,8 @@
           </section>
         {/each}
       </div>
+    {:else if ui.settingsSection === 'twitch'}
+      <TwitchSection twitch={app.twitch} />
     {:else}
       <h2>Sobre</h2>
       <dl>

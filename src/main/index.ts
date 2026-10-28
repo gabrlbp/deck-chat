@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, powerMonitor } from 'electron'
 import { IPC, type AppState } from '../shared/ipc'
 import { EventFeed } from './game/EventFeed'
 import { registerIpc } from './ipc'
@@ -6,6 +6,7 @@ import { log } from './logger'
 import { SlotManager } from './slots/SlotManager'
 import { loadConfig, saveConfig } from './store'
 import { createTray } from './tray'
+import { TwitchService } from './twitch/TwitchService'
 import { createMainWindow } from './window'
 
 const TICK_MS = 10_000
@@ -33,16 +34,19 @@ async function bootstrap(): Promise<void> {
   let quitting = false
 
   const info = { version: app.getVersion(), electron: process.versions.electron, dataDir: app.getPath('userData') }
-  const getState = (): AppState => ({ slots: slots.states(), info })
+  const getState = (): AppState => ({ slots: slots.states(), info, twitch: twitch.state() })
   const broadcast = () => {
     if (!win.isDestroyed()) win.webContents.send(IPC.state, getState())
   }
+  const persist = () => saveConfig(config)
 
   const feed = new EventFeed((event) => {
     log(`[evento] ${event.slot} ${event.nick ?? '?'} ${event.kind}: ${event.title}${event.detail ? ` (${event.detail})` : ''}`)
   })
-  const slots = new SlotManager(win, config, () => saveConfig(config), broadcast, (event) => feed.push(event))
-  registerIpc(win, slots, getState)
+  const slots = new SlotManager(win, config, persist, broadcast, (event) => feed.push(event))
+  const twitch = new TwitchService(config, persist, broadcast)
+  registerIpc(win, slots, twitch, getState)
+  powerMonitor.on('resume', () => twitch.onResume())
 
   const quit = () => {
     quitting = true
@@ -70,10 +74,15 @@ async function bootstrap(): Promise<void> {
   })
   app.on('before-quit', () => {
     quitting = true
+    twitch.dispose()
     slots.destroyAll()
   })
 
   slots.start()
-  setInterval(() => slots.tick(), TICK_MS)
+  void twitch.start()
+  setInterval(() => {
+    twitch.syncFromGame(slots.snapshots().map((s) => s.snapshot))
+    slots.tick()
+  }, TICK_MS)
   log(`Deck Chat iniciado (Electron ${process.versions.electron}, dados em ${app.getPath('userData')})`)
 }

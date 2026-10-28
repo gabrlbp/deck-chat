@@ -21,6 +21,15 @@ const api: DeckApi = {
     capture: () => ipcRenderer.invoke(IPC.capture),
     clearSession: (id) => ipcRenderer.invoke(IPC.clearSession, { id }),
   },
+  twitch: {
+    login: () => ipcRenderer.send(IPC.twitchLogin),
+    cancelLogin: () => ipcRenderer.send(IPC.twitchCancelLogin),
+    openActivate: () => ipcRenderer.send(IPC.twitchOpenActivate),
+    logout: () => ipcRenderer.send(IPC.twitchLogout),
+    setChannelEnabled: (login, enabled) => ipcRenderer.send(IPC.twitchSetChannelEnabled, { login, enabled }),
+    addExtra: (login) => ipcRenderer.send(IPC.twitchAddExtra, { login }),
+    removeExtra: (login) => ipcRenderer.send(IPC.twitchRemoveExtra, { login }),
+  },
 }
 
 contextBridge.exposeInMainWorld('deck', api)

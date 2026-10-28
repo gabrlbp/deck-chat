@@ -153,7 +153,7 @@ TwitchPresence.connect()
 ```
 
 ```text
-OfficialChannels (alimentado pelo GameState dos slots, sem chamar a API da Twitch)
+TwitchService.syncFromGame (alimentado pelo GameState dos slots a cada 10 s, sem chamar a API da Twitch)
   estado.twitch.oficiais (~a cada 67s, S4) → lista oficial; salva na config (cache)
   canais = oficiais ∪ extras manuais − desligados
   mudou a lista → TwitchPresence entra/sai dos canais (JOIN/PART)
@@ -243,11 +243,12 @@ deck-chat/
 │   │   │   ├── parser.ts         # mensagem → evento (shiny, drop, captura, problema); puro e testável
 │   │   │   └── EventFeed.ts      # feed em memória da sessão, filtros, contador de não lidas
 │   │   └── twitch/
+│   │       ├── TwitchService.ts  # orquestra login, token, presença, lista do jogo e bônus
+│   │       ├── tokenStore.ts     # tokens criptografados com safeStorage (DPAPI)
+│   │       ├── channels.ts       # oficiais + extras, LiveTracker, cálculo do bônus (puro)
 │   │       ├── auth.ts           # Device Code Flow, validate, refresh
 │   │       ├── irc.ts            # parser de linhas IRC (puro, testável)
-│   │       ├── TwitchPresence.ts # conexão, JOIN, keepalive, reconexão, estados
-│   │       ├── OfficialChannels.ts # lista oficial + ao vivo vindos do jogo, extras manuais
-│   │       └── bonus.ts          # cálculo puro do bônus estimado por canal
+│   │       └── TwitchPresence.ts # conexão, JOIN, keepalive, reconexão, estados
 │   ├── preload/
 │   │   └── index.ts              # contextBridge.exposeInMainWorld('deck', …)
 │   ├── renderer/                 # UI Svelte

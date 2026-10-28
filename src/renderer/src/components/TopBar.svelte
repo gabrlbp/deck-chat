@@ -1,5 +1,9 @@
 <script lang="ts">
+  import type { AppState } from '../../../shared/ipc'
   import { ui, type Tab } from '../lib/ui.svelte'
+  import TwitchPill from './TwitchPill.svelte'
+
+  let { app }: { app: AppState } = $props()
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'accounts', label: 'Contas' },
@@ -16,6 +20,7 @@
     {/each}
   </nav>
 
+  <TwitchPill twitch={app.twitch} />
   <button title="Esconde a janela na bandeja; os jogos continuam rodando" onclick={() => window.deck.hideToTray()}>
     ⤓ Bandeja
   </button>

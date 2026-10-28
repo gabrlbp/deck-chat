@@ -27,7 +27,7 @@
 
 {#if app}
   <div class="shell">
-    <TopBar />
+    <TopBar {app} />
 
     {#if ui.tab === 'settings'}
       <SettingsPage {app} />

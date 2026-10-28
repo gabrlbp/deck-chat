@@ -18,18 +18,11 @@
     disabled: 'desativado',
   }
 
-  const numberFormat = new Intl.NumberFormat('pt-BR')
-
-  const gameText = $derived.by(() => {
-    const g = slot.game
-    const parts = [
-      g.level !== undefined ? `Nv ${g.level}` : null,
-      g.hunt ?? null,
-      g.balls !== undefined ? `🔴 ${numberFormat.format(g.balls)}` : null,
-    ].filter((part) => part !== null)
-    return parts.join(' · ')
-  })
-  const noBalls = $derived(slot.game.balls === 0)
+  const gameText = $derived(
+    [slot.game.level !== undefined ? `Nv ${slot.game.level}` : null, slot.game.hunt ?? null]
+      .filter((part) => part !== null)
+      .join(' · '),
+  )
 
   // informa ao main onde a view nativa do jogo deve ser desenhada
   $effect(() => {
@@ -67,7 +60,7 @@
       <span class="muted">{statusLabel[slot.status]}</span>
     {/if}
     {#if gameText}
-      <span class="game" class:warn={noBalls}>{gameText}</span>
+      <span class="game">{gameText}</span>
     {/if}
     {#if slot.game.msgsPerMin !== undefined && (slot.game.msgsPerMin > 0 || slot.game.nick)}
       <span
@@ -142,7 +135,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .game.warn,
   .silent {
     color: var(--err);
   }

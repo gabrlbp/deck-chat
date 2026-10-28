@@ -28,10 +28,29 @@ export const SlotConfigSchema = v.object({
 })
 export type SlotConfig = v.InferOutput<typeof SlotConfigSchema>
 
+export const TwitchLoginSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.toLowerCase(),
+  v.regex(/^[a-z0-9_]{2,25}$/, 'nome de canal inválido'),
+)
+
+export const TwitchConfigSchema = v.object({
+  /** última lista oficial recebida do jogo; usada ao abrir, antes dos slots carregarem */
+  official: v.array(v.object({ login: TwitchLoginSchema, nome: v.string() })),
+  extras: v.array(TwitchLoginSchema),
+  disabled: v.array(TwitchLoginSchema),
+})
+export type TwitchConfig = v.InferOutput<typeof TwitchConfigSchema>
+
+const defaultTwitchConfig = (): TwitchConfig => ({ official: [], extras: [], disabled: [] })
+
 export const ConfigSchema = v.object({
   version: v.literal(1),
   gameUrl: v.pipe(v.string(), v.url()),
   slots: v.pipe(v.array(SlotConfigSchema), v.length(SLOT_IDS.length)),
+  // opcional com padrão: configs salvas antes da Twitch continuam válidas
+  twitch: v.optional(TwitchConfigSchema, defaultTwitchConfig),
 })
 export type Config = v.InferOutput<typeof ConfigSchema>
 
@@ -45,6 +64,7 @@ export const DEFAULT_CONFIG: Config = {
     muted: true,
     zoom: 1,
   })),
+  twitch: defaultTwitchConfig(),
 }
 
 // Payloads IPC (renderer → main). O main valida tudo antes de usar.
@@ -55,3 +75,5 @@ export const SetZoomPayload = v.object({ id: SlotIdSchema, zoom: ZoomSchema })
 export const SlotIdPayload = v.object({ id: SlotIdSchema })
 export const SetLabelPayload = v.object({ id: SlotIdSchema, label: SlotConfigSchema.entries.label })
 export const SetVisiblePayload = v.object({ visible: v.boolean() })
+export const ChannelPayload = v.object({ login: TwitchLoginSchema })
+export const SetChannelEnabledPayload = v.object({ login: TwitchLoginSchema, enabled: v.boolean() })
