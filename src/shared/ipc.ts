@@ -10,6 +10,10 @@ export const IPC = {
   setEnabled: 'slots:setEnabled',
   setZoom: 'slots:setZoom',
   reload: 'slots:reload',
+  setLabel: 'slots:setLabel',
+  setVisible: 'slots:setVisible',
+  capture: 'slots:capture',
+  clearSession: 'slots:clearSession',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -47,8 +51,14 @@ export type GameEvent = {
   detail?: string
 }
 
+/** "Foto" de um slot para o fundo do modal rápido (F4.2). */
+export type SlotSnapshot = { id: SlotId; dataUrl: string; bounds: Bounds }
+
+export type AppInfo = { version: string; electron: string; dataDir: string }
+
 export type AppState = {
   slots: SlotState[]
+  info: AppInfo
 }
 
 export interface DeckApi {
@@ -63,5 +73,10 @@ export interface DeckApi {
     setEnabled(id: SlotId, enabled: boolean): void
     setZoom(id: SlotId, zoom: number): void
     reload(id: SlotId): void
+    setLabel(id: SlotId, label: string): void
+    /** esconde as views nativas (o jogo continua rodando) para a UI poder ficar por cima */
+    setVisible(visible: boolean): void
+    capture(): Promise<SlotSnapshot[]>
+    clearSession(id: SlotId): Promise<void>
   }
 }

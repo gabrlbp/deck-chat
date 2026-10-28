@@ -32,7 +32,8 @@ async function bootstrap(): Promise<void> {
   const win = createMainWindow(startHidden)
   let quitting = false
 
-  const getState = (): AppState => ({ slots: slots.states() })
+  const info = { version: app.getVersion(), electron: process.versions.electron, dataDir: app.getPath('userData') }
+  const getState = (): AppState => ({ slots: slots.states(), info })
   const broadcast = () => {
     if (!win.isDestroyed()) win.webContents.send(IPC.state, getState())
   }

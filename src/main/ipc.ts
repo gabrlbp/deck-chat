@@ -4,7 +4,9 @@ import { IPC, type AppState } from '../shared/ipc'
 import {
   SetBoundsPayload,
   SetEnabledPayload,
+  SetLabelPayload,
   SetMutedPayload,
+  SetVisiblePayload,
   SetZoomPayload,
   SlotIdPayload,
 } from '../shared/schemas'
@@ -27,10 +29,21 @@ export function registerIpc(win: BrowserWindow, slots: SlotManager, getState: ()
     })
   }
 
-  ipcMain.handle(IPC.getState, (event) => {
-    if (!fromUi(event.sender)) throw new Error('remetente não autorizado')
-    return getState()
-  })
+  // canal com resposta (invoke) e payload validado
+  function handle<S extends v.GenericSchema, R>(
+    channel: string,
+    schema: S,
+    handler: (payload: v.InferOutput<S>) => R | Promise<R>,
+  ) {
+    ipcMain.handle(channel, (event, payload: unknown) => {
+      if (!fromUi(event.sender)) throw new Error('remetente não autorizado')
+      return handler(v.parse(schema, payload))
+    })
+  }
+
+  handle(IPC.getState, v.undefined(), () => getState())
+  handle(IPC.capture, v.undefined(), () => slots.capture())
+  handle(IPC.clearSession, SlotIdPayload, ({ id }) => slots.clearSession(id))
 
   ipcMain.on(IPC.openLogs, (event) => {
     if (fromUi(event.sender)) void shell.openPath(logDir())
@@ -44,4 +57,6 @@ export function registerIpc(win: BrowserWindow, slots: SlotManager, getState: ()
   on(IPC.setEnabled, SetEnabledPayload, ({ id, enabled }) => slots.setEnabled(id, enabled))
   on(IPC.setZoom, SetZoomPayload, ({ id, zoom }) => slots.setZoom(id, zoom))
   on(IPC.reload, SlotIdPayload, ({ id }) => slots.reload(id))
+  on(IPC.setLabel, SetLabelPayload, ({ id, label }) => slots.setLabel(id, label))
+  on(IPC.setVisible, SetVisiblePayload, ({ visible }) => slots.setVisible(visible))
 }

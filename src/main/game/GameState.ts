@@ -31,6 +31,11 @@ export class SlotGame {
     return this.state
   }
 
+  /** Outra conta vai logar no slot (sessão limpa). */
+  reset(): void {
+    this.state = {}
+  }
+
   /** Aplica um `estado` parcial e retorna problemas detectados na transição. */
   apply(estado: Estado): EventDraft[] {
     const prev = this.state

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { WebContentsView, type BrowserWindow } from 'electron'
-import type { GameEvent, SlotGameInfo, SlotState, SlotStatus } from '../../shared/ipc'
+import { WebContentsView, session, type BrowserWindow } from 'electron'
+import type { GameEvent, SlotGameInfo, SlotSnapshot, SlotState, SlotStatus } from '../../shared/ipc'
 import type { Bounds, Config, SlotConfig, SlotId } from '../../shared/schemas'
 import type { EventDraft } from '../game/events'
 import { ballsLeft } from '../game/GameState'
@@ -24,6 +24,9 @@ const CRASH_RELOAD_MS = 3000
 const ERROR_RETRY_MS = 60_000
 /** O servidor manda ~60–90 mensagens/min por alt (S3); 3 min de silêncio = jogo parado. */
 const UNRESPONSIVE_MS = 3 * 60_000
+/** As fotos do modal ficam desfocadas: metade da resolução e JPEG bastam. */
+const SNAPSHOT_SCALE = 0.5
+const SNAPSHOT_QUALITY = 70
 
 export class SlotManager {
   private readonly win: BrowserWindow
@@ -32,6 +35,7 @@ export class SlotManager {
   private readonly onChange: () => void
   private readonly onEvent: (event: GameEvent) => void
   private readonly slots = new Map<SlotId, Slot>()
+  private visible = true
 
   constructor(
     win: BrowserWindow,
@@ -105,6 +109,51 @@ export class SlotManager {
     this.slot(id).view?.webContents.reload()
   }
 
+  setLabel(id: SlotId, label: string): void {
+    this.cfg(id).label = label
+    this.persist()
+    this.onChange()
+  }
+
+  /** Esconde as views nativas para a UI ficar por cima (F4). O jogo continua rodando. */
+  setVisible(visible: boolean): void {
+    this.visible = visible
+    for (const slot of this.slots.values()) slot.view?.setVisible(visible)
+  }
+
+  async capture(): Promise<SlotSnapshot[]> {
+    const shots = await Promise.all(
+      this.config.slots.map(async (cfg): Promise<SlotSnapshot | null> => {
+        const slot = this.slot(cfg.id)
+        if (!slot.view || slot.bounds.width === 0 || slot.bounds.height === 0) return null
+        try {
+          const image = await slot.view.webContents.capturePage()
+          const small = image.resize({ width: Math.max(1, Math.round(slot.bounds.width * SNAPSHOT_SCALE)) })
+          const dataUrl = `data:image/jpeg;base64,${small.toJPEG(SNAPSHOT_QUALITY).toString('base64')}`
+          return { id: cfg.id, dataUrl, bounds: slot.bounds }
+        } catch (err) {
+          log(`[${cfg.id}] falha ao capturar a tela do slot: ${String(err)}`)
+          return null
+        }
+      }),
+    )
+    return shots.filter((shot) => shot !== null)
+  }
+
+  /** "Desloga" o slot: apaga cookies, storage e cache da partition e recarrega. */
+  async clearSession(id: SlotId): Promise<void> {
+    const slot = this.slot(id)
+    // tira o jogo da tela antes, para ele não regravar cookies/storage durante a limpeza
+    if (slot.view) await slot.view.webContents.loadURL('about:blank')
+    const ses = session.fromPartition(`persist:${id}`)
+    await ses.clearStorageData()
+    await ses.clearCache()
+    slot.tap?.game.reset()
+    log(`[${id}] sessão limpa`)
+    if (slot.view) void slot.view.webContents.loadURL(this.config.gameUrl)
+    this.onChange()
+  }
+
   /** Chamado periodicamente: atualiza mensagens/min e recarrega slots em silêncio (F1.11). */
   tick(now = Date.now()): void {
     for (const cfg of this.config.slots) {
@@ -176,6 +225,7 @@ export class SlotManager {
     })
     view.setBackgroundColor('#18181b')
     view.setBounds(slot.bounds)
+    view.setVisible(this.visible)
     slot.view = view
     slot.status = 'loading'
 

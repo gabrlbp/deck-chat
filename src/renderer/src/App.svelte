@@ -1,13 +1,21 @@
 <script lang="ts">
   import type { AppState } from '../../shared/ipc'
+  import ModalHost from './components/ModalHost.svelte'
+  import SettingsPage from './components/settings/SettingsPage.svelte'
   import SlotFrame from './components/SlotFrame.svelte'
   import TopBar from './components/TopBar.svelte'
+  import { slotsVisible, ui } from './lib/ui.svelte'
 
   let app = $state<AppState | null>(null)
 
   $effect(() => {
     void window.deck.getState().then((initial) => (app ??= initial))
     return window.deck.onState((next) => (app = next))
+  })
+
+  // os jogos são views nativas por cima da UI: escondê-las quando a UI precisa da tela toda
+  $effect(() => {
+    window.deck.slots.setVisible(slotsVisible())
   })
 
   const enabled = $derived(app?.slots.filter((s) => s.enabled) ?? [])
@@ -19,10 +27,15 @@
 
 {#if app}
   <div class="shell">
-    <TopBar {app} />
+    <TopBar />
 
-    {#if enabled.length === 0}
-      <div class="empty">Nenhum slot ativo. Ative um na barra acima.</div>
+    {#if ui.tab === 'settings'}
+      <SettingsPage {app} />
+    {:else if enabled.length === 0}
+      <div class="empty">
+        Nenhum slot ativo.
+        <button onclick={() => (ui.tab = 'settings')}>Ativar em Configurações</button>
+      </div>
     {:else}
       <main
         class="grid"
@@ -33,11 +46,16 @@
           <SlotFrame {slot} {layoutKey} />
         {/each}
         {#if enabled.length === 3}
-          <div class="filler">slot livre</div>
+          <div class="filler">
+            slot livre
+            <button onclick={() => (ui.tab = 'settings')}>Ativar outro slot</button>
+          </div>
         {/if}
       </main>
     {/if}
   </div>
+
+  <ModalHost {app} />
 {/if}
 
 <style>
@@ -55,7 +73,9 @@
   .filler,
   .empty {
     display: grid;
-    place-items: center;
+    place-content: center;
+    justify-items: center;
+    gap: 10px;
     color: var(--muted);
     background: var(--panel);
   }

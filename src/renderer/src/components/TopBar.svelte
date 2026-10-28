@@ -1,25 +1,21 @@
 <script lang="ts">
-  import type { AppState } from '../../../shared/ipc'
+  import { ui, type Tab } from '../lib/ui.svelte'
 
-  let { app }: { app: AppState } = $props()
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'accounts', label: 'Contas' },
+    { id: 'settings', label: 'Configurações' },
+  ]
 </script>
 
 <header>
   <strong>Deck Chat</strong>
 
-  <nav aria-label="Slots">
-    {#each app.slots as slot (slot.id)}
-      <button
-        class:on={slot.enabled}
-        title={slot.enabled ? 'Desativar (o login continua salvo)' : 'Ativar'}
-        onclick={() => window.deck.slots.setEnabled(slot.id, !slot.enabled)}
-      >
-        {slot.game.nick ?? slot.label}
-      </button>
+  <nav aria-label="Abas">
+    {#each tabs as tab (tab.id)}
+      <button class:active={ui.tab === tab.id} onclick={() => (ui.tab = tab.id)}>{tab.label}</button>
     {/each}
   </nav>
 
-  <button onclick={() => window.deck.openLogs()}>Abrir logs</button>
   <button title="Esconde a janela na bandeja; os jogos continuam rodando" onclick={() => window.deck.hideToTray()}>
     ⤓ Bandeja
   </button>
@@ -29,24 +25,25 @@
   header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     padding: 8px 12px;
     background: var(--panel-2);
     border-bottom: 1px solid var(--line);
   }
   nav {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     margin-right: auto;
   }
   nav button {
+    border: 0;
+    background: transparent;
     color: var(--muted);
-    border-style: dashed;
+    padding: 4px 10px;
   }
-  nav button.on {
+  nav button.active {
     color: var(--text);
-    border-style: solid;
-    border-color: var(--twitch);
-    background: var(--twitch-soft);
+    background: var(--bg);
+    box-shadow: inset 0 -2px 0 var(--twitch);
   }
 </style>

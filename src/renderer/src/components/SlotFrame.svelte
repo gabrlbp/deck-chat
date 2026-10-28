@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SlotState, SlotStatus } from '../../../shared/ipc'
-  import { ZOOM_MAX, ZOOM_MIN } from '../../../shared/schemas'
+  import { slotName, zoomBy } from '../lib/slots'
+  import { openModal } from '../lib/ui.svelte'
 
   let { slot, layoutKey }: { slot: SlotState; layoutKey: string } = $props()
 
@@ -29,11 +30,6 @@
     return parts.join(' · ')
   })
   const noBalls = $derived(slot.game.balls === 0)
-
-  function zoomBy(delta: number) {
-    const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, slot.zoom + delta))
-    window.deck.slots.setZoom(slot.id, Math.round(next * 10) / 10)
-  }
 
   // informa ao main onde a view nativa do jogo deve ser desenhada
   $effect(() => {
@@ -66,23 +62,27 @@
 <section class="frame">
   <header>
     <span class="dot {slot.status}" title={statusLabel[slot.status]}></span>
-    <strong>{slot.game.nick ?? slot.label}</strong>
+    <strong>{slotName(slot)}</strong>
     {#if slot.status !== 'ok'}
       <span class="muted">{statusLabel[slot.status]}</span>
     {/if}
     {#if gameText}
       <span class="game" class:warn={noBalls}>{gameText}</span>
     {/if}
-    {#if slot.game.msgsPerMin !== undefined}
-      <span class="muted" title="Mensagens do servidor por minuto (vigia de saúde)">
+    {#if slot.game.msgsPerMin !== undefined && (slot.game.msgsPerMin > 0 || slot.game.nick)}
+      <span
+        class="muted"
+        class:silent={slot.game.msgsPerMin === 0}
+        title="Mensagens do servidor por minuto (vigia de saúde)"
+      >
         {Math.round(slot.game.msgsPerMin)}/min
       </span>
     {/if}
 
     <div class="actions">
-      <button title="Diminuir zoom" onclick={() => zoomBy(-0.1)}>−</button>
+      <button title="Diminuir zoom" onclick={() => zoomBy(slot, -0.1)}>−</button>
       <span class="zoom">{Math.round(slot.zoom * 100)}%</span>
-      <button title="Aumentar zoom" onclick={() => zoomBy(0.1)}>+</button>
+      <button title="Aumentar zoom" onclick={() => zoomBy(slot, 0.1)}>+</button>
       <button
         title={slot.muted ? 'Desmutar' : 'Mutar'}
         onclick={() => window.deck.slots.setMuted(slot.id, !slot.muted)}
@@ -90,6 +90,7 @@
         {slot.muted ? '🔇' : '🔊'}
       </button>
       <button title="Recarregar" onclick={() => window.deck.slots.reload(slot.id)}>⟳</button>
+      <button title="Configurar slot" onclick={() => openModal({ kind: 'slot', id: slot.id })}>⚙</button>
     </div>
   </header>
 
@@ -141,7 +142,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .game.warn {
+  .game.warn,
+  .silent {
     color: var(--err);
   }
   .actions {

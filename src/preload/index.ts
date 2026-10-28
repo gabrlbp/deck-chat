@@ -16,6 +16,10 @@ const api: DeckApi = {
     setEnabled: (id, enabled) => ipcRenderer.send(IPC.setEnabled, { id, enabled }),
     setZoom: (id, zoom) => ipcRenderer.send(IPC.setZoom, { id, zoom }),
     reload: (id) => ipcRenderer.send(IPC.reload, { id }),
+    setLabel: (id, label) => ipcRenderer.send(IPC.setLabel, { id, label }),
+    setVisible: (visible) => ipcRenderer.send(IPC.setVisible, { visible }),
+    capture: () => ipcRenderer.invoke(IPC.capture),
+    clearSession: (id) => ipcRenderer.invoke(IPC.clearSession, { id }),
   },
 }
 
