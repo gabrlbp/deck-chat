@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import { IPC, type AppState, type DeckApi } from '../shared/ipc'
+import { IPC, type AppState, type DeckApi, type GameEvent } from '../shared/ipc'
 
 const api: DeckApi = {
   getState: () => ipcRenderer.invoke(IPC.getState),
@@ -29,6 +29,15 @@ const api: DeckApi = {
     setChannelEnabled: (login, enabled) => ipcRenderer.send(IPC.twitchSetChannelEnabled, { login, enabled }),
     addExtra: (login) => ipcRenderer.send(IPC.twitchAddExtra, { login }),
     removeExtra: (login) => ipcRenderer.send(IPC.twitchRemoveExtra, { login }),
+  },
+  events: {
+    list: () => ipcRenderer.invoke(IPC.eventsList),
+    clear: () => ipcRenderer.send(IPC.eventsClear),
+    onNew: (listener) => {
+      const handler = (_event: IpcRendererEvent, gameEvent: GameEvent) => listener(gameEvent)
+      ipcRenderer.on(IPC.eventNew, handler)
+      return () => ipcRenderer.off(IPC.eventNew, handler)
+    },
   },
 }
 

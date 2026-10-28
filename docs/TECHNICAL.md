@@ -455,7 +455,8 @@ Qualquer componente que fizer `import { status }` reage automaticamente às muda
 ## 7. Scripts e CI
 
 ```text
-npm run dev         # electron-vite dev (hot reload no renderer)
+npm run dev                                   # electron-vite dev (hot reload no renderer)
+DECK_REPLAY=gravacao.jsonl npm run dev        # passa uma gravação do S4 pelos slots (só em dev, não no .exe)
 npm run typecheck   # tsc + svelte-check
 npm run test        # vitest
 npm run build       # electron-vite build

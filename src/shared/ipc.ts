@@ -21,6 +21,9 @@ export const IPC = {
   twitchSetChannelEnabled: 'twitch:setChannelEnabled',
   twitchAddExtra: 'twitch:addExtra',
   twitchRemoveExtra: 'twitch:removeExtra',
+  eventsList: 'events:list',
+  eventsClear: 'events:clear',
+  eventNew: 'events:new',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -121,5 +124,11 @@ export interface DeckApi {
     setChannelEnabled(login: string, enabled: boolean): void
     addExtra(login: string): void
     removeExtra(login: string): void
+  }
+  events: {
+    /** eventos da sessão, mais recente primeiro */
+    list(): Promise<GameEvent[]>
+    clear(): void
+    onNew(listener: (event: GameEvent) => void): () => void
   }
 }

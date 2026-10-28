@@ -1,9 +1,11 @@
 <script lang="ts">
   import type { AppState } from '../../shared/ipc'
   import ModalHost from './components/ModalHost.svelte'
+  import NotificationsPage from './components/NotificationsPage.svelte'
   import SettingsPage from './components/settings/SettingsPage.svelte'
   import SlotFrame from './components/SlotFrame.svelte'
   import TopBar from './components/TopBar.svelte'
+  import { connectFeed, feed } from './lib/events.svelte'
   import { slotsVisible, ui } from './lib/ui.svelte'
 
   let app = $state<AppState | null>(null)
@@ -11,6 +13,13 @@
   $effect(() => {
     void window.deck.getState().then((initial) => (app ??= initial))
     return window.deck.onState((next) => (app = next))
+  })
+
+  $effect(() => connectFeed(() => ui.tab === 'notifications'))
+
+  // abrir a aba Notificações marca tudo como lido
+  $effect(() => {
+    if (ui.tab === 'notifications') feed.unread = 0
   })
 
   // os jogos são views nativas por cima da UI: escondê-las quando a UI precisa da tela toda
@@ -31,6 +40,8 @@
 
     {#if ui.tab === 'settings'}
       <SettingsPage {app} />
+    {:else if ui.tab === 'notifications'}
+      <NotificationsPage {app} />
     {:else if enabled.length === 0}
       <div class="empty">
         Nenhum slot ativo.

@@ -182,6 +182,15 @@ export class SlotManager {
     this.onChange()
   }
 
+  /** Desenvolvimento: injeta mensagens gravadas (spike S4) nos slots ativos, como se viessem do jogo. */
+  replay(frames: { slot: string; data: string }[]): void {
+    for (const frame of frames) {
+      const slot = this.slots.get(frame.slot as SlotId)
+      slot?.tap?.ingest(frame.data)
+    }
+    this.onChange()
+  }
+
   destroyAll(): void {
     for (const cfg of this.config.slots) this.destroy(cfg.id)
   }

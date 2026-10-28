@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { SlotState, SlotStatus } from '../../../shared/ipc'
-  import { slotName, zoomBy } from '../lib/slots'
+  import { slotName } from '../lib/slots'
   import { openModal } from '../lib/ui.svelte'
 
   let { slot, layoutKey }: { slot: SlotState; layoutKey: string } = $props()
@@ -73,9 +73,6 @@
     {/if}
 
     <div class="actions">
-      <button title="Diminuir zoom" onclick={() => zoomBy(slot, -0.1)}>−</button>
-      <span class="zoom">{Math.round(slot.zoom * 100)}%</span>
-      <button title="Aumentar zoom" onclick={() => zoomBy(slot, 0.1)}>+</button>
       <button
         title={slot.muted ? 'Desmutar' : 'Mutar'}
         onclick={() => window.deck.slots.setMuted(slot.id, !slot.muted)}
@@ -83,7 +80,9 @@
         {slot.muted ? '🔇' : '🔊'}
       </button>
       <button title="Recarregar" onclick={() => window.deck.slots.reload(slot.id)}>⟳</button>
-      <button title="Configurar slot" onclick={() => openModal({ kind: 'slot', id: slot.id })}>⚙</button>
+      <button title="Configurar slot (zoom, rótulo, sessão)" onclick={() => openModal({ kind: 'slot', id: slot.id })}>
+        ⚙
+      </button>
     </div>
   </header>
 
@@ -126,14 +125,20 @@
     background: var(--err);
   }
   .muted,
-  .game,
-  .zoom {
+  .game {
     color: var(--muted);
     font-size: 12px;
   }
+  /* o nível/hunt é o que encolhe primeiro quando falta espaço */
   .game {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  strong,
+  .muted,
+  .actions {
+    flex: none;
   }
   .silent {
     color: var(--err);
@@ -143,10 +148,6 @@
     align-items: center;
     gap: 4px;
     margin-left: auto;
-  }
-  .zoom {
-    min-width: 36px;
-    text-align: center;
   }
   .area {
     min-height: 0;

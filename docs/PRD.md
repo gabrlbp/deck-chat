@@ -258,7 +258,7 @@ flowchart LR
 
 ### Fase 1 — MVP
 
-Ordem sugerida: ~~casca Electron + Svelte → slots (F1)~~ (feito na Fase 0) → ~~limpar os spikes + vigia de saúde (F1.11, F1.12)~~ (v0.0.4) → ~~aba/modal de configurações (F4)~~ (v0.0.5) → ~~Twitch (F2)~~ (v0.0.6) → Notificações (F5, depois do S4) → tray/auto-start/status (F3) → CI gerando o `.exe` nos Releases.
+Ordem sugerida: ~~casca Electron + Svelte → slots (F1)~~ (feito na Fase 0) → ~~limpar os spikes + vigia de saúde (F1.11, F1.12)~~ (v0.0.4) → ~~aba/modal de configurações (F4)~~ (v0.0.5) → ~~Twitch (F2)~~ (v0.0.6) → ~~Notificações (F5)~~ (v0.0.7) → tray/auto-start/status (F3) → CI gerando o `.exe` nos Releases.
 
 ### Fase 2 — Ideias futuras (não comprometidas)
 

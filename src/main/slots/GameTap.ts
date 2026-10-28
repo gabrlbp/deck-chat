@@ -31,7 +31,7 @@ export class GameTap {
     wc.debugger.on('message', (_event, method, params) => {
       if (method !== 'Network.webSocketFrameReceived') return
       const { response } = params as WsFrameParams
-      if (response.opcode === WS_TEXT_OPCODE) this.onFrame(response.payloadData)
+      if (response.opcode === WS_TEXT_OPCODE) this.ingest(response.payloadData)
     })
     wc.debugger.on('detach', (_event, reason) => log(`[${slotId}] escuta do jogo desconectada: ${reason}`))
   }
@@ -70,7 +70,8 @@ export class GameTap {
     return rate
   }
 
-  private onFrame(raw: string): void {
+  /** Uma mensagem de texto do servidor do jogo (público para o modo replay de desenvolvimento). */
+  ingest(raw: string): void {
     const msg = decode(raw)
     if (!msg) return
 

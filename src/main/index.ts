@@ -1,4 +1,5 @@
 import { app, powerMonitor } from 'electron'
+import { readFileSync } from 'node:fs'
 import { IPC, type AppState } from '../shared/ipc'
 import { EventFeed } from './game/EventFeed'
 import { registerIpc } from './ipc'
@@ -42,10 +43,11 @@ async function bootstrap(): Promise<void> {
 
   const feed = new EventFeed((event) => {
     log(`[evento] ${event.slot} ${event.nick ?? '?'} ${event.kind}: ${event.title}${event.detail ? ` (${event.detail})` : ''}`)
+    if (!win.isDestroyed()) win.webContents.send(IPC.eventNew, event)
   })
   const slots = new SlotManager(win, config, persist, broadcast, (event) => feed.push(event))
   const twitch = new TwitchService(config, persist, broadcast)
-  registerIpc(win, slots, twitch, getState)
+  registerIpc(win, slots, twitch, feed, getState)
   powerMonitor.on('resume', () => twitch.onResume())
 
   const quit = () => {
@@ -85,4 +87,18 @@ async function bootstrap(): Promise<void> {
     slots.tick()
   }, TICK_MS)
   log(`Deck Chat iniciado (Electron ${process.versions.electron}, dados em ${app.getPath('userData')})`)
+
+  const replayFile = process.env['DECK_REPLAY']
+  if (!app.isPackaged && replayFile) setTimeout(() => replayRecording(replayFile, slots), 3000)
+}
+
+/** Desenvolvimento: `DECK_REPLAY=gravacao.jsonl npm run dev` passa uma gravação do S4 pelos slots. */
+function replayRecording(file: string, slots: SlotManager): void {
+  const frames = readFileSync(file, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as { slot: string; dir: string; data?: string })
+    .flatMap((entry) => (entry.dir === 'in' && entry.data ? [{ slot: entry.slot, data: entry.data }] : []))
+  log(`[replay] ${frames.length} mensagens de ${file}`)
+  slots.replay(frames)
 }

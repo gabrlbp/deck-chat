@@ -13,6 +13,7 @@ import {
   SlotIdPayload,
 } from '../shared/schemas'
 import { log, logDir } from './logger'
+import type { EventFeed } from './game/EventFeed'
 import type { SlotManager } from './slots/SlotManager'
 import type { TwitchService } from './twitch/TwitchService'
 
@@ -20,6 +21,7 @@ export function registerIpc(
   win: BrowserWindow,
   slots: SlotManager,
   twitch: TwitchService,
+  feed: EventFeed,
   getState: () => AppState,
 ): void {
   const fromUi = (sender: WebContents) => sender.id === win.webContents.id
@@ -52,6 +54,8 @@ export function registerIpc(
   handle(IPC.getState, v.undefined(), () => getState())
   handle(IPC.capture, v.undefined(), () => slots.capture())
   handle(IPC.clearSession, SlotIdPayload, ({ id }) => slots.clearSession(id))
+  handle(IPC.eventsList, v.undefined(), () => [...feed.list()])
+  on(IPC.eventsClear, v.undefined(), () => feed.clear())
 
   ipcMain.on(IPC.openLogs, (event) => {
     if (fromUi(event.sender)) void shell.openPath(logDir())

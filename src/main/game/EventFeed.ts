@@ -20,4 +20,8 @@ export class EventFeed {
   list(): readonly GameEvent[] {
     return this.events
   }
+
+  clear(): void {
+    this.events = []
+  }
 }

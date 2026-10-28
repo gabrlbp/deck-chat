@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AppState } from '../../../shared/ipc'
+  import { feed } from '../lib/events.svelte'
   import { ui, type Tab } from '../lib/ui.svelte'
   import TwitchPill from './TwitchPill.svelte'
 
@@ -7,6 +8,7 @@
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'accounts', label: 'Contas' },
+    { id: 'notifications', label: 'Notificações' },
     { id: 'settings', label: 'Configurações' },
   ]
 </script>
@@ -16,7 +18,12 @@
 
   <nav aria-label="Abas">
     {#each tabs as tab (tab.id)}
-      <button class:active={ui.tab === tab.id} onclick={() => (ui.tab = tab.id)}>{tab.label}</button>
+      <button class:active={ui.tab === tab.id} onclick={() => (ui.tab = tab.id)}>
+        {tab.label}
+        {#if tab.id === 'notifications' && feed.unread > 0}
+          <span class="badge" title="{feed.unread} não lidas">{feed.unread > 99 ? '99+' : feed.unread}</span>
+        {/if}
+      </button>
     {/each}
   </nav>
 
@@ -50,5 +57,16 @@
     color: var(--text);
     background: var(--bg);
     box-shadow: inset 0 -2px 0 var(--twitch);
+  }
+  .badge {
+    display: inline-block;
+    min-width: 18px;
+    margin-left: 4px;
+    padding: 0 5px;
+    border-radius: 99px;
+    background: var(--twitch);
+    color: #fff;
+    font-size: 11px;
+    text-align: center;
   }
 </style>
