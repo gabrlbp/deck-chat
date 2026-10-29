@@ -8,22 +8,28 @@ import {
   SetEnabledPayload,
   SetLabelPayload,
   SetMutedPayload,
+  SetSystemPayload,
   SetVisiblePayload,
   SetZoomPayload,
   SlotIdPayload,
+  type SystemConfig,
 } from '../shared/schemas'
 import { log, logDir } from './logger'
 import type { EventFeed } from './game/EventFeed'
 import type { SlotManager } from './slots/SlotManager'
 import type { TwitchService } from './twitch/TwitchService'
 
-export function registerIpc(
-  win: BrowserWindow,
-  slots: SlotManager,
-  twitch: TwitchService,
-  feed: EventFeed,
-  getState: () => AppState,
-): void {
+type Deps = {
+  slots: SlotManager
+  twitch: TwitchService
+  feed: EventFeed
+  getState: () => AppState
+  setSystem: (patch: Partial<SystemConfig>) => void
+  releasesUrl: string
+}
+
+export function registerIpc(win: BrowserWindow, deps: Deps): void {
+  const { slots, twitch, feed, getState } = deps
   const fromUi = (sender: WebContents) => sender.id === win.webContents.id
 
   // canal fire-and-forget com payload validado
@@ -63,6 +69,10 @@ export function registerIpc(
   ipcMain.on(IPC.hideToTray, (event) => {
     if (fromUi(event.sender)) win.hide()
   })
+  ipcMain.on(IPC.openReleases, (event) => {
+    if (fromUi(event.sender)) void shell.openExternal(deps.releasesUrl)
+  })
+  on(IPC.setSystem, SetSystemPayload, (patch) => deps.setSystem(patch))
 
   on(IPC.setBounds, SetBoundsPayload, ({ id, bounds }) => slots.setBounds(id, bounds))
   on(IPC.setMuted, SetMutedPayload, ({ id, muted }) => slots.setMuted(id, muted))

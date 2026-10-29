@@ -1,16 +1,21 @@
 import { app, powerMonitor } from 'electron'
 import { readFileSync } from 'node:fs'
-import { IPC, type AppState } from '../shared/ipc'
+import { IPC, type AppState, type SlotStatus } from '../shared/ipc'
+import type { SystemConfig } from '../shared/schemas'
+import { summarize } from '../shared/twitch'
+import { applyAutoStart, autoStartSupported } from './autostart'
 import { EventFeed } from './game/EventFeed'
 import { registerIpc } from './ipc'
 import { log } from './logger'
 import { SlotManager } from './slots/SlotManager'
 import { loadConfig, saveConfig } from './store'
-import { createTray } from './tray'
+import { AppTray, type TrayStatus } from './tray'
 import { TwitchService } from './twitch/TwitchService'
 import { createMainWindow } from './window'
 
 const TICK_MS = 10_000
+const RELEASES_URL = 'https://github.com/gabrlbp/deck-chat/releases'
+const BAD_SLOT: SlotStatus[] = ['error', 'crashed', 'unresponsive']
 
 // Remove "Electron/x" e "deck-chat/x" do user-agent: alguns sites bloqueiam ou tratam diferente.
 app.userAgentFallback = app.userAgentFallback.replace(/\s(?:Electron|deck-chat)\/\S+/g, '')
@@ -29,17 +34,45 @@ if (!app.requestSingleInstanceLock()) {
 async function bootstrap(): Promise<void> {
   await app.whenReady()
 
-  const startHidden = process.argv.includes('--hidden')
   const config = loadConfig()
-  const win = createMainWindow(startHidden)
+  const persist = () => saveConfig(config)
+  // --hidden só vem do auto-start do Windows (quando "iniciar na bandeja" está ligado)
+  const startHidden = process.argv.includes('--hidden')
+  const win = createMainWindow(startHidden, config.window, (state) => {
+    config.window = state
+    persist()
+  })
   let quitting = false
 
   const info = { version: app.getVersion(), electron: process.versions.electron, dataDir: app.getPath('userData') }
-  const getState = (): AppState => ({ slots: slots.states(), info, twitch: twitch.state() })
+  const getState = (): AppState => ({
+    slots: slots.states(),
+    info,
+    twitch: twitch.state(),
+    system: { ...config.system, autoStartSupported: autoStartSupported() },
+  })
+
+  const trayStatus = (): TrayStatus => {
+    const t = twitch.state()
+    const s = summarize(t, Date.now())
+    const enabled = slots.states().filter((slot) => slot.enabled)
+    const bad = enabled.filter((slot) => BAD_SLOT.includes(slot.status))
+    const twitchLine =
+      t.auth.state !== 'connected'
+        ? 'Twitch: não conectada'
+        : t.connection !== 'connected'
+          ? 'Twitch: reconectando ao chat…'
+          : `Twitch: ${s.live}/${s.total} ao vivo · ${s.bonus} bônus`
+    return {
+      lines: [twitchLine, `Slots: ${enabled.length - bad.length}/${enabled.length} ok`],
+      degraded: bad.length > 0 || t.auth.state === 'reauth' || (t.auth.state === 'connected' && t.connection !== 'connected'),
+    }
+  }
+
   const broadcast = () => {
     if (!win.isDestroyed()) win.webContents.send(IPC.state, getState())
+    tray.update(trayStatus())
   }
-  const persist = () => saveConfig(config)
 
   const feed = new EventFeed((event) => {
     log(`[evento] ${event.slot} ${event.nick ?? '?'} ${event.kind}: ${event.title}${event.detail ? ` (${event.detail})` : ''}`)
@@ -47,14 +80,20 @@ async function bootstrap(): Promise<void> {
   })
   const slots = new SlotManager(win, config, persist, broadcast, (event) => feed.push(event))
   const twitch = new TwitchService(config, persist, broadcast)
-  registerIpc(win, slots, twitch, feed, getState)
-  powerMonitor.on('resume', () => twitch.onResume())
-
-  const quit = () => {
+  const tray = new AppTray(win, () => {
     quitting = true
     app.quit()
+  })
+
+  const setSystem = (patch: Partial<SystemConfig>) => {
+    config.system = { ...config.system, ...patch }
+    persist()
+    applyAutoStart(config.system)
+    broadcast()
   }
-  createTray(win, quit)
+  registerIpc(win, { slots, twitch, feed, getState, setSystem, releasesUrl: RELEASES_URL })
+  applyAutoStart(config.system)
+  powerMonitor.on('resume', () => twitch.onResume())
 
   // fechar a janela = esconder na bandeja. Sair só pelo menu do tray.
   win.on('close', (event) => {
@@ -86,7 +125,9 @@ async function bootstrap(): Promise<void> {
     twitch.syncFromGame(slots.snapshots().map((s) => s.snapshot))
     slots.tick()
   }, TICK_MS)
-  log(`Deck Chat iniciado (Electron ${process.versions.electron}, dados em ${app.getPath('userData')})`)
+  log(
+    `Deck Chat ${info.version} iniciado (Electron ${info.electron}, dados em ${info.dataDir}${startHidden ? ', na bandeja' : ''})`,
+  )
 
   const replayFile = process.env['DECK_REPLAY']
   if (!app.isPackaged && replayFile) setTimeout(() => replayRecording(replayFile, slots), 3000)

@@ -9,7 +9,9 @@ const api: DeckApi = {
     return () => ipcRenderer.off(IPC.state, handler)
   },
   openLogs: () => ipcRenderer.send(IPC.openLogs),
+  openReleases: () => ipcRenderer.send(IPC.openReleases),
   hideToTray: () => ipcRenderer.send(IPC.hideToTray),
+  setSystem: (patch) => ipcRenderer.send(IPC.setSystem, patch),
   slots: {
     setBounds: (id, bounds) => ipcRenderer.send(IPC.setBounds, { id, bounds }),
     setMuted: (id, muted) => ipcRenderer.send(IPC.setMuted, { id, muted }),

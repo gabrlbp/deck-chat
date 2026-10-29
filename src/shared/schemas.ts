@@ -45,12 +45,32 @@ export type TwitchConfig = v.InferOutput<typeof TwitchConfigSchema>
 
 const defaultTwitchConfig = (): TwitchConfig => ({ official: [], extras: [], disabled: [] })
 
+export const SystemConfigSchema = v.object({
+  startWithWindows: v.boolean(),
+  /** ao iniciar com o Windows, já ir direto para a bandeja */
+  startHidden: v.boolean(),
+})
+export type SystemConfig = v.InferOutput<typeof SystemConfigSchema>
+
+const defaultSystemConfig = (): SystemConfig => ({ startWithWindows: false, startHidden: true })
+
+export const WindowStateSchema = v.object({
+  x: v.number(),
+  y: v.number(),
+  width: v.pipe(v.number(), v.minValue(400)),
+  height: v.pipe(v.number(), v.minValue(300)),
+  maximized: v.boolean(),
+})
+export type WindowState = v.InferOutput<typeof WindowStateSchema>
+
 export const ConfigSchema = v.object({
   version: v.literal(1),
   gameUrl: v.pipe(v.string(), v.url()),
   slots: v.pipe(v.array(SlotConfigSchema), v.length(SLOT_IDS.length)),
-  // opcional com padrão: configs salvas antes da Twitch continuam válidas
+  // opcionais com padrão: configs salvas por versões anteriores continuam válidas
   twitch: v.optional(TwitchConfigSchema, defaultTwitchConfig),
+  system: v.optional(SystemConfigSchema, defaultSystemConfig),
+  window: v.optional(WindowStateSchema),
 })
 export type Config = v.InferOutput<typeof ConfigSchema>
 
@@ -65,6 +85,7 @@ export const DEFAULT_CONFIG: Config = {
     zoom: 1,
   })),
   twitch: defaultTwitchConfig(),
+  system: defaultSystemConfig(),
 }
 
 // Payloads IPC (renderer → main). O main valida tudo antes de usar.
@@ -77,3 +98,4 @@ export const SetLabelPayload = v.object({ id: SlotIdSchema, label: SlotConfigSch
 export const SetVisiblePayload = v.object({ visible: v.boolean() })
 export const ChannelPayload = v.object({ login: TwitchLoginSchema })
 export const SetChannelEnabledPayload = v.object({ login: TwitchLoginSchema, enabled: v.boolean() })
+export const SetSystemPayload = v.partial(SystemConfigSchema)

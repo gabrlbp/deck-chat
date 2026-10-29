@@ -3,6 +3,7 @@
   import { slotName } from '../../lib/slots'
   import { ui, type SettingsSection } from '../../lib/ui.svelte'
   import SlotSettings from './SlotSettings.svelte'
+  import SystemSection from './SystemSection.svelte'
   import TwitchSection from './TwitchSection.svelte'
 
   let { app }: { app: AppState } = $props()
@@ -10,6 +11,7 @@
   const sections: { id: SettingsSection; label: string }[] = [
     { id: 'slots', label: 'Slots' },
     { id: 'twitch', label: 'Twitch' },
+    { id: 'system', label: 'Sistema' },
     { id: 'about', label: 'Sobre' },
   ]
 </script>
@@ -38,6 +40,8 @@
       </div>
     {:else if ui.settingsSection === 'twitch'}
       <TwitchSection twitch={app.twitch} />
+    {:else if ui.settingsSection === 'system'}
+      <SystemSection system={app.system} />
     {:else}
       <h2>Sobre</h2>
       <dl>
@@ -49,10 +53,13 @@
         <dd><code>{app.info.dataDir}</code></dd>
       </dl>
       <p class="hint">
-        Para atualizar, baixe o instalador novo nos Releases do repositório e instale por cima. Logins e
-        configurações são mantidos.
+        Para atualizar, baixe o instalador novo nos Releases do repositório (logado no GitHub) e instale por cima.
+        Logins e configurações são mantidos.
       </p>
-      <button onclick={() => window.deck.openLogs()}>Abrir pasta de logs</button>
+      <div class="buttons">
+        <button onclick={() => window.deck.openReleases()}>Abrir Releases ↗</button>
+        <button onclick={() => window.deck.openLogs()}>Abrir pasta de logs</button>
+      </div>
     {/if}
   </div>
 </div>
@@ -134,5 +141,9 @@
   code {
     font-size: 12px;
     user-select: text;
+  }
+  .buttons {
+    display: flex;
+    gap: 8px;
   }
 </style>

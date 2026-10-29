@@ -5,17 +5,27 @@ directories:
   buildResources: resources
 files:
   - out/**
+  - resources/*.png
   - package.json
 asar: true
+# ícones da janela e da bandeja lidos direto do disco (importados com ?asset no main)
+asarUnpack:
+  - resources/**
 win:
   target:
     - nsis
     - zip
-  # sem assinatura (uso pessoal). Também permite gerar o build no Linux sem wine.
-  signAndEditExecutable: false
+  icon: resources/icon.ico
+  # sem assinatura de código (uso pessoal), mas com ícone e versão gravados no .exe (rcedit).
+  # No Linux o rcedit precisaria de wine: `npm run dist:win:zip` desliga a edição do .exe.
+  signExecutable: false
   artifactName: Deck-Chat-${version}-win-${arch}.${ext}
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   artifactName: Deck-Chat-Setup-${version}.${ext}
-publish: null
+publish:
+  provider: github
+  owner: gabrlbp
+  repo: deck-chat
+  releaseType: release

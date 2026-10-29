@@ -1,19 +1,10 @@
 import type { ChannelView, TwitchState } from '../../../shared/ipc'
 
+export { summarize } from '../../../shared/twitch'
+
 export const mmss = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
-
-export const bonusActive = (c: ChannelView, now: number) => c.present && c.bonusAt !== undefined && c.bonusAt <= now
-
-export function summarize(state: TwitchState, now: number) {
-  const enabled = state.channels.filter((c) => c.enabled)
-  return {
-    total: enabled.length,
-    live: enabled.filter((c) => c.live).length,
-    bonus: enabled.filter((c) => bonusActive(c, now)).length,
-  }
 }
 
 export type ChannelStatus = { text: string; tone: 'ok' | 'wait' | 'muted' | 'err' }

@@ -457,37 +457,21 @@ Qualquer componente que fizer `import { status }` reage automaticamente às muda
 ```text
 npm run dev                                   # electron-vite dev (hot reload no renderer)
 DECK_REPLAY=gravacao.jsonl npm run dev        # passa uma gravação do S4 pelos slots (só em dev, não no .exe)
-npm run typecheck   # tsc + svelte-check
-npm run test        # vitest
-npm run build       # electron-vite build
-npm run dist:win    # electron-builder --win (local, para testar)
+npm run typecheck                             # tsc + svelte-check
+npm test                                      # vitest
+npm run build                                 # electron-vite build
+npm run dist:win:zip                          # zip portátil para Windows gerado no Linux (sem ícone no .exe)
+npm run dist:win                              # instalador + zip (no Windows; no Linux exigiria wine)
 ```
 
 ```text
-.github/workflows/release.yml
-  on: push tags v*
-  permissions: contents: write
-  runs-on: windows-latest
-  steps
-    checkout → setup-node (LTS) → npm ci
-    npm run typecheck && npm run test
-    npm run build
-    npx electron-builder --win --publish always
-      env GH_TOKEN = secrets.GITHUB_TOKEN     # automático, nada para configurar
+.github/workflows/ci.yml        push em master / PR → typecheck, testes e build (ubuntu)
+.github/workflows/release.yml   tag v* → windows-latest:
+                                  npm ci → typecheck → testes → electron-vite build
+                                  electron-builder --win --publish always (GH_TOKEN = GITHUB_TOKEN automático)
+                                  → Release da tag com Deck-Chat-Setup-x.y.z.exe e o zip portátil
 ```
 
-```yaml
-# electron-builder.yml (trecho)
-appId: dev.gbr.deckchat
-productName: Deck Chat
-win:
-  target: nsis
-nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-publish:
-  provider: github
-  owner: <seu-usuario>
-  repo: deck-chat
-  releaseType: release
-```
+Para publicar uma versão: subir `version` no `package.json`, commitar e criar a tag igual (`git tag v0.1.0 && git push origin master v0.1.0`).
+
+Configuração do empacotamento em `electron-builder.yml`: NSIS + zip, ícone `resources/icon.ico` gravado no `.exe` (`signExecutable: false`: sem assinatura de código), ícones da bandeja em `resources/` fora do asar, publicação em `gabrlbp/deck-chat`.

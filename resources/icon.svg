@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Deck Chat: 3 alts do PokeIdle (amarelo) + chat da Twitch (roxo) num grid 2x2 -->
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="#18181b"/>
+  <rect x="80" y="80" width="164" height="164" rx="36" fill="#ffcb05"/>
+  <rect x="268" y="80" width="164" height="164" rx="36" fill="#ffcb05"/>
+  <rect x="80" y="268" width="164" height="164" rx="36" fill="#ffcb05"/>
+  <rect x="268" y="268" width="164" height="164" rx="36" fill="#9146ff"/>
+  <!-- balão de chat -->
+  <path d="M308 312 h84 a12 12 0 0 1 12 12 v52 a12 12 0 0 1 -12 12 h-38 l-24 22 v-22 h-22 a12 12 0 0 1 -12 -12 v-52 a12 12 0 0 1 12 -12 z" fill="#fff"/>
+  <!-- linha de pokébola nos blocos das alts -->
+  <g stroke="#18181b" stroke-width="12" fill="none">
+    <path d="M80 162 h164 M268 162 h164 M80 350 h164"/>
+    <circle cx="162" cy="162" r="22" fill="#ffcb05"/>
+    <circle cx="350" cy="162" r="22" fill="#ffcb05"/>
+    <circle cx="162" cy="350" r="22" fill="#ffcb05"/>
+  </g>
+</svg>

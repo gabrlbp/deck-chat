@@ -1,4 +1,4 @@
-import type { Bounds, SlotId } from './schemas'
+import type { Bounds, SlotId, SystemConfig } from './schemas'
 
 export const IPC = {
   getState: 'app:getState',
@@ -24,6 +24,8 @@ export const IPC = {
   eventsList: 'events:list',
   eventsClear: 'events:clear',
   eventNew: 'events:new',
+  setSystem: 'system:set',
+  openReleases: 'app:openReleases',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -92,10 +94,16 @@ export type TwitchState = {
   channels: ChannelView[]
 }
 
+export type SystemState = SystemConfig & {
+  /** iniciar com o Windows só funciona no app instalado no Windows */
+  autoStartSupported: boolean
+}
+
 export type AppState = {
   slots: SlotState[]
   info: AppInfo
   twitch: TwitchState
+  system: SystemState
 }
 
 export interface DeckApi {
@@ -103,7 +111,9 @@ export interface DeckApi {
   /** retorna a função para cancelar a inscrição */
   onState(listener: (state: AppState) => void): () => void
   openLogs(): void
+  openReleases(): void
   hideToTray(): void
+  setSystem(patch: Partial<SystemConfig>): void
   slots: {
     setBounds(id: SlotId, bounds: Bounds): void
     setMuted(id: SlotId, muted: boolean): void
