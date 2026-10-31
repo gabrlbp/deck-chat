@@ -7,9 +7,12 @@ export const autoStartSupported = () => process.platform === 'win32' && app.isPa
 
 export function applyAutoStart(system: SystemConfig): void {
   if (!autoStartSupported()) return
-  app.setLoginItemSettings({
-    openAtLogin: system.startWithWindows,
-    args: system.startHidden ? ['--hidden'] : [],
-  })
-  log(`iniciar com o Windows: ${system.startWithWindows ? 'ligado' : 'desligado'}${system.startHidden ? ' (na bandeja)' : ''}`)
+  const args = system.startHidden ? ['--hidden'] : []
+  app.setLoginItemSettings({ openAtLogin: system.startWithWindows, args })
+  // o que ficou registrado no Windows (diagnóstico do B1)
+  const items = app.getLoginItemSettings({ args }).launchItems ?? []
+  const registered = items.map((item) => `${item.path} ${item.args.join(' ')}`.trim()).join(' | ') || 'nenhum'
+  log(
+    `iniciar com o Windows: ${system.startWithWindows ? 'ligado' : 'desligado'}${system.startHidden ? ' (na bandeja)' : ''}; registrado: ${registered}`,
+  )
 }

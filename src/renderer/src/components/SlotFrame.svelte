@@ -74,6 +74,12 @@
 
     <div class="actions">
       <button
+        title={slot.hideGame ? 'Mostrar o jogo' : 'Esconder o jogo (continua rodando; teste de memória S5)'}
+        onclick={() => window.deck.slots.setHideGame(slot.id, !slot.hideGame)}
+      >
+        {slot.hideGame ? '👁' : '🙈'}
+      </button>
+      <button
         title={slot.muted ? 'Desmutar' : 'Mutar'}
         onclick={() => window.deck.slots.setMuted(slot.id, !slot.muted)}
       >
@@ -86,7 +92,12 @@
     </div>
   </header>
 
-  <div class="area" bind:this={area}></div>
+  <div class="area" class:hidden-game={slot.hideGame} bind:this={area}>
+    {#if slot.hideGame}
+      <p>Jogo escondido · continua rodando</p>
+      <button onclick={() => window.deck.slots.setHideGame(slot.id, false)}>Mostrar jogo</button>
+    {/if}
+  </div>
 </section>
 
 <style>
@@ -151,5 +162,17 @@
   }
   .area {
     min-height: 0;
+  }
+  /* a view nativa do jogo está escondida: a área da própria UI aparece no lugar */
+  .area.hidden-game {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 10px;
+    background: #000;
+    color: var(--muted);
+  }
+  .area.hidden-game p {
+    margin: 0;
   }
 </style>

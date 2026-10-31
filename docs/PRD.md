@@ -274,6 +274,7 @@ Ordem combinada: B1 → S5 → F6 → (F7/F8 conforme o S5). Os itens 5 (snipe n
 | Causa provável | `win.maximize()` ao restaurar o estado salvo **também mostra a janela** (comportamento documentado do Electron). Acontece se o app estava maximizado ao fechar |
 | Correção | Aplicar o maximizado só quando a janela for mostrada (ao abrir normal ou ao sair da bandeja pela primeira vez) |
 | Diagnóstico | Registrar no `deck.log` os argumentos recebidos (`--hidden` sim/não), para confirmar que o Windows repassa o argumento |
+| Status | Corrigido na v0.1.1. Causa reproduzida isoladamente (janela escondida + `maximize()` → visível). Falta confirmar no boot do Windows |
 
 #### F6 — Modo foco: um slot ocupa o grid
 
@@ -295,6 +296,10 @@ Ordem combinada: B1 → S5 → F6 → (F7/F8 conforme o S5). Os itens 5 (snipe n
 | C | View do slot escondida pelo app (tela preta no lugar do jogo) | Se esconder a view reduz RAM |
 | D | Aceleração por GPU desligada (exige reiniciar) | Troca de RAM do processo de GPU por CPU |
 | E | Uma noite rodando | Se a memória do jogo cresce com o tempo (vazamento) e quanto um recarregar devolve |
+
+Ferramentas na v0.1.1: medidor em Configurações > Sobre (CSV `logs/s5-memory.csv`, uma linha por processo por minuto, com a fase), botão 🙈 por slot e opção de GPU em Sistema. Protocolo em `spikes/s5-memory/README.md`.
+
+Prévia no Linux (sem login, não conclusiva): com a GPU desligada **o processo de GPU continua existindo** (desenho por software), caindo de ~147 para ~91 MB.
 
 Critério: decidir F7 e F8 com números. Hipótese a confirmar: esconder o jogo corta CPU/GPU (o slot escondido desenha a ~143 fps, S3), mas a RAM do JavaScript e dos recursos do jogo continua ocupada, porque a página precisa seguir rodando.
 

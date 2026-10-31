@@ -117,14 +117,38 @@ export class SlotManager {
   /** Esconde as views nativas para a UI ficar por cima (F4). O jogo continua rodando. */
   setVisible(visible: boolean): void {
     this.visible = visible
-    for (const slot of this.slots.values()) slot.view?.setVisible(visible)
+    for (const cfg of this.config.slots) this.applyVisibility(cfg.id)
+  }
+
+  /** Esconde o jogo deste slot (tela preta na UI); a página continua rodando. Spike S5 / F7. */
+  setHideGame(id: SlotId, hide: boolean): void {
+    this.cfg(id).hideGame = hide
+    this.persist()
+    this.applyVisibility(id)
+    log(`[${id}] jogo ${hide ? 'escondido' : 'visível'}`)
+    this.onChange()
+  }
+
+  /** PID do processo de cada slot ativo, para o medidor de memória. */
+  processIds(): { id: SlotId; nick?: string; pid: number }[] {
+    return this.config.slots.flatMap((cfg) => {
+      const slot = this.slot(cfg.id)
+      if (!slot.view || slot.view.webContents.isDestroyed()) return []
+      const pid = slot.view.webContents.getOSProcessId()
+      return pid ? [{ id: cfg.id, nick: slot.tap?.game.snapshot.nick, pid }] : []
+    })
+  }
+
+  private applyVisibility(id: SlotId): void {
+    this.slot(id).view?.setVisible(this.visible && !this.cfg(id).hideGame)
   }
 
   async capture(): Promise<SlotSnapshot[]> {
     const shots = await Promise.all(
       this.config.slots.map(async (cfg): Promise<SlotSnapshot | null> => {
         const slot = this.slot(cfg.id)
-        if (!slot.view || slot.bounds.width === 0 || slot.bounds.height === 0) return null
+        // jogo escondido: a UI já mostra a tela preta no lugar, não há o que fotografar
+        if (!slot.view || cfg.hideGame || slot.bounds.width === 0 || slot.bounds.height === 0) return null
         try {
           const image = await slot.view.webContents.capturePage()
           const small = image.resize({ width: Math.max(1, Math.round(slot.bounds.width * SNAPSHOT_SCALE)) })
@@ -232,7 +256,7 @@ export class SlotManager {
     })
     view.setBackgroundColor('#18181b')
     view.setBounds(slot.bounds)
-    view.setVisible(this.visible)
+    view.setVisible(this.visible && !cfg.hideGame)
     slot.view = view
     slot.status = 'loading'
 

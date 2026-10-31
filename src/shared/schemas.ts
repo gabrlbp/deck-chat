@@ -25,6 +25,8 @@ export const SlotConfigSchema = v.object({
   enabled: v.boolean(),
   muted: v.boolean(),
   zoom: ZoomSchema,
+  /** jogo escondido pelo app (tela preta), continua rodando. Experimental, spike S5 */
+  hideGame: v.optional(v.boolean(), false),
 })
 export type SlotConfig = v.InferOutput<typeof SlotConfigSchema>
 
@@ -49,10 +51,12 @@ export const SystemConfigSchema = v.object({
   startWithWindows: v.boolean(),
   /** ao iniciar com o Windows, já ir direto para a bandeja */
   startHidden: v.boolean(),
+  /** desligar troca a RAM do processo de GPU por CPU; vale após reiniciar. Spike S5 */
+  hardwareAcceleration: v.optional(v.boolean(), true),
 })
 export type SystemConfig = v.InferOutput<typeof SystemConfigSchema>
 
-const defaultSystemConfig = (): SystemConfig => ({ startWithWindows: false, startHidden: true })
+const defaultSystemConfig = (): SystemConfig => ({ startWithWindows: false, startHidden: true, hardwareAcceleration: true })
 
 export const WindowStateSchema = v.object({
   x: v.number(),
@@ -83,6 +87,7 @@ export const DEFAULT_CONFIG: Config = {
     enabled: i < 3,
     muted: true,
     zoom: 1,
+    hideGame: false,
   })),
   twitch: defaultTwitchConfig(),
   system: defaultSystemConfig(),
@@ -99,3 +104,8 @@ export const SetVisiblePayload = v.object({ visible: v.boolean() })
 export const ChannelPayload = v.object({ login: TwitchLoginSchema })
 export const SetChannelEnabledPayload = v.object({ login: TwitchLoginSchema, enabled: v.boolean() })
 export const SetSystemPayload = v.partial(SystemConfigSchema)
+export const SetHideGamePayload = v.object({ id: SlotIdSchema, hide: v.boolean() })
+
+export const MEMORY_PHASES = ['-', 'A', 'B', 'C', 'D', 'E'] as const
+export const SetPhasePayload = v.object({ phase: v.picklist(MEMORY_PHASES) })
+export type MemoryPhase = (typeof MEMORY_PHASES)[number]

@@ -8,10 +8,13 @@ import {
   SetEnabledPayload,
   SetLabelPayload,
   SetMutedPayload,
+  SetHideGamePayload,
+  SetPhasePayload,
   SetSystemPayload,
   SetVisiblePayload,
   SetZoomPayload,
   SlotIdPayload,
+  type MemoryPhase,
   type SystemConfig,
 } from '../shared/schemas'
 import { log, logDir } from './logger'
@@ -25,6 +28,8 @@ type Deps = {
   feed: EventFeed
   getState: () => AppState
   setSystem: (patch: Partial<SystemConfig>) => void
+  relaunch: () => void
+  setPhase: (phase: MemoryPhase) => void
   releasesUrl: string
 }
 
@@ -73,6 +78,9 @@ export function registerIpc(win: BrowserWindow, deps: Deps): void {
     if (fromUi(event.sender)) void shell.openExternal(deps.releasesUrl)
   })
   on(IPC.setSystem, SetSystemPayload, (patch) => deps.setSystem(patch))
+  on(IPC.relaunch, v.undefined(), () => deps.relaunch())
+  on(IPC.setPhase, SetPhasePayload, ({ phase }) => deps.setPhase(phase))
+  on(IPC.setHideGame, SetHideGamePayload, ({ id, hide }) => slots.setHideGame(id, hide))
 
   on(IPC.setBounds, SetBoundsPayload, ({ id, bounds }) => slots.setBounds(id, bounds))
   on(IPC.setMuted, SetMutedPayload, ({ id, muted }) => slots.setMuted(id, muted))

@@ -228,6 +228,9 @@ deck-chat/
 │   │   ├── window.ts             # BaseWindow + view da UI, posição/tamanho salvos
 │   │   ├── ipc.ts                # registra handlers IPC (com validação Valibot)
 │   │   ├── logger.ts             # deck.log + CSVs em userData/logs
+│   │   ├── diagnostics/
+│   │   │   ├── memory.ts         # métricas → amostra nomeada + linhas do CSV (puro, testável)
+│   │   │   └── MemoryMonitor.ts  # app.getAppMetrics() a cada minuto → logs/s5-memory.csv (spike S5)
 │   │   ├── store.ts              # config.json + migrações
 │   │   ├── secrets.ts            # safeStorage para os tokens
 │   │   ├── tray.ts               # ícone, menu, fechar → bandeja

@@ -41,11 +41,22 @@ export function createMainWindow(
     },
   })
 
-  if (saved?.maximized) win.maximize()
+  // maximize() também MOSTRA a janela (documentado no Electron): aplicar só quando ela for exibida,
+  // senão "iniciar escondido na bandeja" abre a janela no boot (B1)
+  let pendingMaximize = saved?.maximized ?? false
+  const restoreMaximized = () => {
+    if (!pendingMaximize) return
+    pendingMaximize = false
+    win.maximize()
+  }
 
   win.once('ready-to-show', () => {
-    if (!startHidden) win.show()
+    if (startHidden) return
+    win.show()
+    restoreMaximized()
   })
+  // primeira vez que sai da bandeja
+  win.on('show', restoreMaximized)
 
   let saveTimer: NodeJS.Timeout | null = null
   const save = () => {

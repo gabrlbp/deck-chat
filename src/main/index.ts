@@ -4,6 +4,7 @@ import { IPC, type AppState, type SlotStatus } from '../shared/ipc'
 import type { SystemConfig } from '../shared/schemas'
 import { summarize } from '../shared/twitch'
 import { applyAutoStart, autoStartSupported } from './autostart'
+import { MemoryMonitor } from './diagnostics/MemoryMonitor'
 import { EventFeed } from './game/EventFeed'
 import { registerIpc } from './ipc'
 import { log } from './logger'
@@ -32,9 +33,12 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 async function bootstrap(): Promise<void> {
+  // lida antes do app ficar pronto: desligar a GPU só funciona antes do whenReady
+  const config = loadConfig()
+  if (!config.system.hardwareAcceleration) app.disableHardwareAcceleration()
+
   await app.whenReady()
 
-  const config = loadConfig()
   const persist = () => saveConfig(config)
   // --hidden só vem do auto-start do Windows (quando "iniciar na bandeja" está ligado)
   const startHidden = process.argv.includes('--hidden')
@@ -49,7 +53,12 @@ async function bootstrap(): Promise<void> {
     slots: slots.states(),
     info,
     twitch: twitch.state(),
-    system: { ...config.system, autoStartSupported: autoStartSupported() },
+    system: {
+      ...config.system,
+      autoStartSupported: autoStartSupported(),
+      hardwareAccelerationActive: app.isHardwareAccelerationEnabled(),
+    },
+    diagnostics: memory.state(),
   })
 
   const trayStatus = (): TrayStatus => {
@@ -85,13 +94,43 @@ async function bootstrap(): Promise<void> {
     app.quit()
   })
 
+  const memory = new MemoryMonitor({
+    knownProcesses: () => {
+      const known = new Map<number, string>([[win.webContents.getOSProcessId(), 'interface']])
+      for (const s of slots.processIds()) known.set(s.pid, s.nick ? `${s.id} · ${s.nick}` : s.id)
+      return known
+    },
+    context: () => ({
+      gpu: app.isHardwareAccelerationEnabled(),
+      window: win.isMinimized() ? 'minimizada' : win.isVisible() ? 'visivel' : 'bandeja',
+      hiddenSlots: slots.states().filter((s) => s.enabled && s.hideGame).map((s) => s.id),
+    }),
+    onSample: broadcast,
+  })
+
   const setSystem = (patch: Partial<SystemConfig>) => {
     config.system = { ...config.system, ...patch }
     persist()
     applyAutoStart(config.system)
     broadcast()
   }
-  registerIpc(win, { slots, twitch, feed, getState, setSystem, releasesUrl: RELEASES_URL })
+  const relaunch = () => {
+    log('reiniciando o app a pedido')
+    // não repassa --hidden: quem pediu o reinício está olhando a janela
+    app.relaunch({ args: process.argv.slice(1).filter((arg) => arg !== '--hidden') })
+    quitting = true
+    app.quit()
+  }
+  registerIpc(win, {
+    slots,
+    twitch,
+    feed,
+    getState,
+    setSystem,
+    relaunch,
+    setPhase: (phase) => memory.setPhase(phase),
+    releasesUrl: RELEASES_URL,
+  })
   applyAutoStart(config.system)
   powerMonitor.on('resume', () => twitch.onResume())
 
@@ -121,12 +160,17 @@ async function bootstrap(): Promise<void> {
 
   slots.start()
   void twitch.start()
+  memory.start()
   setInterval(() => {
     twitch.syncFromGame(slots.snapshots().map((s) => s.snapshot))
     slots.tick()
   }, TICK_MS)
   log(
     `Deck Chat ${info.version} iniciado (Electron ${info.electron}, dados em ${info.dataDir}${startHidden ? ', na bandeja' : ''})`,
+  )
+  // diagnóstico do B1: confirma se o Windows repassou o --hidden do auto-start
+  log(
+    `argumentos: ${process.argv.slice(1).join(' ') || '(nenhum)'} · GPU ${app.isHardwareAccelerationEnabled() ? 'ligada' : 'desligada'}`,
   )
 
   const replayFile = process.env['DECK_REPLAY']

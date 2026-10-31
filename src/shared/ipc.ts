@@ -1,4 +1,4 @@
-import type { Bounds, SlotId, SystemConfig } from './schemas'
+import type { Bounds, MemoryPhase, SlotId, SystemConfig } from './schemas'
 
 export const IPC = {
   getState: 'app:getState',
@@ -26,6 +26,9 @@ export const IPC = {
   eventNew: 'events:new',
   setSystem: 'system:set',
   openReleases: 'app:openReleases',
+  relaunch: 'app:relaunch',
+  setHideGame: 'slots:setHideGame',
+  setPhase: 'diagnostics:setPhase',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -45,6 +48,7 @@ export type SlotState = {
   enabled: boolean
   muted: boolean
   zoom: number
+  hideGame: boolean
   status: SlotStatus
   game: SlotGameInfo
 }
@@ -97,6 +101,23 @@ export type TwitchState = {
 export type SystemState = SystemConfig & {
   /** iniciar com o Windows só funciona no app instalado no Windows */
   autoStartSupported: boolean
+  /** estado real desta execução (a opção só vale após reiniciar) */
+  hardwareAccelerationActive: boolean
+}
+
+/** Memória de um processo, em MB. `privateMb` só existe no Windows. */
+export type ProcessMemory = { label: string; type: string; pid: number; workingSetMb: number; privateMb?: number }
+
+export type MemorySample = {
+  at: number
+  total: { workingSetMb: number; privateMb?: number }
+  processes: ProcessMemory[]
+}
+
+export type DiagnosticsState = {
+  /** fase do teste S5 escolhida na tela Sobre; vai em cada linha do CSV */
+  phase: MemoryPhase
+  memory: MemorySample | null
 }
 
 export type AppState = {
@@ -104,6 +125,7 @@ export type AppState = {
   info: AppInfo
   twitch: TwitchState
   system: SystemState
+  diagnostics: DiagnosticsState
 }
 
 export interface DeckApi {
@@ -114,6 +136,8 @@ export interface DeckApi {
   openReleases(): void
   hideToTray(): void
   setSystem(patch: Partial<SystemConfig>): void
+  relaunch(): void
+  setPhase(phase: MemoryPhase): void
   slots: {
     setBounds(id: SlotId, bounds: Bounds): void
     setMuted(id: SlotId, muted: boolean): void
@@ -123,6 +147,7 @@ export interface DeckApi {
     setLabel(id: SlotId, label: string): void
     /** esconde as views nativas (o jogo continua rodando) para a UI poder ficar por cima */
     setVisible(visible: boolean): void
+    setHideGame(id: SlotId, hide: boolean): void
     capture(): Promise<SlotSnapshot[]>
     clearSession(id: SlotId): Promise<void>
   }

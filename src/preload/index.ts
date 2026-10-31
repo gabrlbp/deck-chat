@@ -12,6 +12,8 @@ const api: DeckApi = {
   openReleases: () => ipcRenderer.send(IPC.openReleases),
   hideToTray: () => ipcRenderer.send(IPC.hideToTray),
   setSystem: (patch) => ipcRenderer.send(IPC.setSystem, patch),
+  relaunch: () => ipcRenderer.send(IPC.relaunch),
+  setPhase: (phase) => ipcRenderer.send(IPC.setPhase, { phase }),
   slots: {
     setBounds: (id, bounds) => ipcRenderer.send(IPC.setBounds, { id, bounds }),
     setMuted: (id, muted) => ipcRenderer.send(IPC.setMuted, { id, muted }),
@@ -20,6 +22,7 @@ const api: DeckApi = {
     reload: (id) => ipcRenderer.send(IPC.reload, { id }),
     setLabel: (id, label) => ipcRenderer.send(IPC.setLabel, { id, label }),
     setVisible: (visible) => ipcRenderer.send(IPC.setVisible, { visible }),
+    setHideGame: (id, hide) => ipcRenderer.send(IPC.setHideGame, { id, hide }),
     capture: () => ipcRenderer.invoke(IPC.capture),
     clearSession: (id) => ipcRenderer.invoke(IPC.clearSession, { id }),
   },

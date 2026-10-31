@@ -5,6 +5,7 @@
   import SlotSettings from './SlotSettings.svelte'
   import SystemSection from './SystemSection.svelte'
   import TwitchSection from './TwitchSection.svelte'
+  import MemoryPanel from './MemoryPanel.svelte'
 
   let { app }: { app: AppState } = $props()
 
@@ -60,6 +61,7 @@
         <button onclick={() => window.deck.openReleases()}>Abrir Releases ↗</button>
         <button onclick={() => window.deck.openLogs()}>Abrir pasta de logs</button>
       </div>
+      <MemoryPanel diagnostics={app.diagnostics} />
     {/if}
   </div>
 </div>
