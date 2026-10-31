@@ -260,13 +260,79 @@ flowchart LR
 
 Ordem sugerida: ~~casca Electron + Svelte → slots (F1)~~ (feito na Fase 0) → ~~limpar os spikes + vigia de saúde (F1.11, F1.12)~~ (v0.0.4) → ~~aba/modal de configurações (F4)~~ (v0.0.5) → ~~Twitch (F2)~~ (v0.0.6) → ~~Notificações (F5)~~ (v0.0.7) → ~~tray/auto-start/status (F3) → CI gerando o `.exe` nos Releases~~ (v0.1.0). **Fase 1 concluída.**
 
-### Fase 2 — Ideias futuras (não comprometidas)
+### Fase 2 — Melhorias após uso da v0.1.0 (31/10/2026)
+
+Contexto do PC Windows que define as prioridades: **16 GB de RAM** divididos com outros programas, enquanto CPU (Ryzen 7 9800X3D, 8 núcleos/16 threads) e GPU (16 GB de VRAM) sobram. **RAM é o recurso a economizar**; trocar RAM por CPU/GPU é aceitável.
+
+Ordem combinada: B1 → S5 → F6 → (F7/F8 conforme o S5). Os itens 5 (snipe no mercado) e 6 (Kick) ficam para depois e serão discutidos à parte.
+
+#### B1 — Bug: "Iniciar escondido na bandeja" abre a janela
+
+| | |
+|---|---|
+| Sintoma | Com "Iniciar com o Windows" + "Iniciar escondido" ligados, o app abre com a janela visível no boot |
+| Causa provável | `win.maximize()` ao restaurar o estado salvo **também mostra a janela** (comportamento documentado do Electron). Acontece se o app estava maximizado ao fechar |
+| Correção | Aplicar o maximizado só quando a janela for mostrada (ao abrir normal ou ao sair da bandeja pela primeira vez) |
+| Diagnóstico | Registrar no `deck.log` os argumentos recebidos (`--hidden` sim/não), para confirmar que o Windows repassa o argumento |
+
+#### F6 — Modo foco: um slot ocupa o grid
+
+| ID | Requisito |
+|---|---|
+| F6.1 | Botão ⛶ na barra de cada slot (e duplo clique na barra) coloca o slot em foco: ele ocupa toda a área do grid; a barra de cima do app continua |
+| F6.2 | Os outros slots ficam **escondidos e rodando** (mesmo mecanismo da aba Configurações; S3: escondido não desacelera) |
+| F6.3 | Coluna lateral estreita com um cartão por alt fora do foco: nick, Nv, hunt, status (ok/erro) e o último evento. Clicar num cartão troca o foco para aquela alt |
+| F6.4 | `Esc` ou o botão ⛶ de novo voltam ao grid. O foco não é salvo entre execuções |
+
+#### S5 — Medição de memória (spike, antes de F7 e F8)
+
+**Pergunta:** quanto de RAM cada processo usa (UI, GPU, cada slot) e quanto cada opção economiza de verdade?
+
+| Fase | Situação | O que mede |
+|---|---|---|
+| A | Normal (jogo visível) | Linha de base |
+| B | Opção do próprio jogo que esconde o canvas e mostra as estatísticas | Se o modo nativo do jogo reduz RAM |
+| C | View do slot escondida pelo app (tela preta no lugar do jogo) | Se esconder a view reduz RAM |
+| D | Aceleração por GPU desligada (exige reiniciar) | Troca de RAM do processo de GPU por CPU |
+| E | Uma noite rodando | Se a memória do jogo cresce com o tempo (vazamento) e quanto um recarregar devolve |
+
+Critério: decidir F7 e F8 com números. Hipótese a confirmar: esconder o jogo corta CPU/GPU (o slot escondido desenha a ~143 fps, S3), mas a RAM do JavaScript e dos recursos do jogo continua ocupada, porque a página precisa seguir rodando.
+
+#### F7 — Modo baixo consumo por slot (depende do S5)
+
+Ideia: substituir o jogo do slot por uma tela preta para economizar memória.
+
+- Se o S5 mostrar que esconder o jogo **não** reduz RAM de forma relevante, o painel de estatísticas próprio **não será feito**: o jogo já tem uma opção nativa que esconde o canvas e mostra essas informações (e mais).
+- Se reduzir, o painel mostra no lugar do jogo, com totais e por hora **desde o início da hunt** (trocar de hunt zera; botão de zerar manual):
+
+| Campo | Fonte (mensagens do jogo, confirmada no S4) |
+|---|---|
+| Hunt | `estado.huntSlug` |
+| XP do treinador: total, por hora, quanto falta | `estado.xp`, `xpProximo` |
+| XP do pokémon: mesmos campos | `estado.pkMud[]` (`xp`, `xpNivel`, `xpProximo`) |
+| Lucro líquido, por hora e gasto | variação de `estado.gold`; gasto = ouro das mortes − lucro líquido (validar com compras reais) |
+| Abates e capturas: total e por hora | eventos `morte` e `capturado` |
+| Shinies vistos e pegos | `bola.shiny`, `fugiu.shiny`, `capturado.pokemon.shiny` |
+| Poções e pokébolas restantes (tempo real) | `estado.items` / `estado.balls` com os IDs de `automation.potionIds` / `ballIds` |
+| Drops da outland | `morte.drops` |
+
+#### F8 — Redução de memória do app (depende do S5)
+
+Candidatos, a aplicar conforme os números:
+
+| Medida | Ganho esperado |
+|---|---|
+| Corretor ortográfico desligado nos slots (`spellcheck: false`) | Pequeno, sem efeito colateral |
+| Esconder o canvas do jogo por CSS enquanto o slot não está visível | CPU/GPU certo; RAM a medir |
+| Aceleração por GPU desligada | Remove o processo de GPU; custa CPU (que sobra) |
+| Recarregar o slot preventivamente a cada X horas | Só se o S5 mostrar crescimento de memória com o tempo |
+| Indicador de memória por slot na tela Sobre (o medidor do S5 fica no app) | Visibilidade para decidir quando recarregar |
+
+#### Outras ideias (não comprometidas)
 
 - Usar o slot 4 para a main.
-- Modo "foco": duplo clique maximiza um slot e esconde os outros.
-- Zoom por slot, para caber melhor no grid.
-- Reavaliar a Kick se o PokeIdle mudar o método de bônus.
 - Aviso de "nova versão disponível" ou auto-update, caso o repo vire público.
+- Item 5 — snipe no mercado (RMT) e item 6 — pontos e boosts da Kick: a discutir. Os dois tocam em decisões do escopo original (sem automação de gameplay; Kick fora por exigir assistir).
 
 ## 9. Critérios de aceite do MVP
 
