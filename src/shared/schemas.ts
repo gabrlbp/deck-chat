@@ -25,8 +25,6 @@ export const SlotConfigSchema = v.object({
   enabled: v.boolean(),
   muted: v.boolean(),
   zoom: ZoomSchema,
-  /** jogo escondido pelo app (tela preta), continua rodando. Experimental, spike S5 */
-  hideGame: v.optional(v.boolean(), false),
 })
 export type SlotConfig = v.InferOutput<typeof SlotConfigSchema>
 
@@ -47,16 +45,32 @@ export type TwitchConfig = v.InferOutput<typeof TwitchConfigSchema>
 
 const defaultTwitchConfig = (): TwitchConfig => ({ official: [], extras: [], disabled: [] })
 
+export const MEMORY_RELOAD_MIN_MB = 300
+export const MEMORY_RELOAD_MAX_MB = 2000
+export const MEMORY_RELOAD_DEFAULT_MB = 500
+
+const MemoryReloadSchema = v.object({
+  enabled: v.boolean(),
+  limitMb: v.pipe(v.number(), v.integer(), v.minValue(MEMORY_RELOAD_MIN_MB), v.maxValue(MEMORY_RELOAD_MAX_MB)),
+})
+
 export const SystemConfigSchema = v.object({
   startWithWindows: v.boolean(),
   /** ao iniciar com o Windows, já ir direto para a bandeja */
   startHidden: v.boolean(),
-  /** desligar troca a RAM do processo de GPU por CPU; vale após reiniciar. Spike S5 */
-  hardwareAcceleration: v.optional(v.boolean(), true),
+  /** ligada, o processo de GPU usa ~850–1000 MB de RAM (S5); desligada, o desenho vai para a CPU. Vale após reiniciar */
+  hardwareAcceleration: v.optional(v.boolean(), false),
+  /** recarrega o slot que passar do limite (F8): os slots crescem ~13–30 MB/h (S5) */
+  memoryReload: v.optional(MemoryReloadSchema, () => ({ enabled: true, limitMb: MEMORY_RELOAD_DEFAULT_MB })),
 })
 export type SystemConfig = v.InferOutput<typeof SystemConfigSchema>
 
-const defaultSystemConfig = (): SystemConfig => ({ startWithWindows: false, startHidden: true, hardwareAcceleration: true })
+const defaultSystemConfig = (): SystemConfig => ({
+  startWithWindows: false,
+  startHidden: true,
+  hardwareAcceleration: false,
+  memoryReload: { enabled: true, limitMb: MEMORY_RELOAD_DEFAULT_MB },
+})
 
 export const WindowStateSchema = v.object({
   x: v.number(),
@@ -67,8 +81,11 @@ export const WindowStateSchema = v.object({
 })
 export type WindowState = v.InferOutput<typeof WindowStateSchema>
 
+/** v2: GPU desligada por padrão (S5). A migração da v1 fica em main/store.ts */
+export const CONFIG_VERSION = 2
+
 export const ConfigSchema = v.object({
-  version: v.literal(1),
+  version: v.literal(CONFIG_VERSION),
   gameUrl: v.pipe(v.string(), v.url()),
   slots: v.pipe(v.array(SlotConfigSchema), v.length(SLOT_IDS.length)),
   // opcionais com padrão: configs salvas por versões anteriores continuam válidas
@@ -79,7 +96,7 @@ export const ConfigSchema = v.object({
 export type Config = v.InferOutput<typeof ConfigSchema>
 
 export const DEFAULT_CONFIG: Config = {
-  version: 1,
+  version: CONFIG_VERSION,
   gameUrl: 'https://pokeidle.io',
   slots: SLOT_IDS.map((id, i) => ({
     id,
@@ -87,7 +104,6 @@ export const DEFAULT_CONFIG: Config = {
     enabled: i < 3,
     muted: true,
     zoom: 1,
-    hideGame: false,
   })),
   twitch: defaultTwitchConfig(),
   system: defaultSystemConfig(),
@@ -104,9 +120,4 @@ export const SetVisiblePayload = v.object({ visible: v.boolean() })
 export const ChannelPayload = v.object({ login: TwitchLoginSchema })
 export const SetChannelEnabledPayload = v.object({ login: TwitchLoginSchema, enabled: v.boolean() })
 export const SetSystemPayload = v.partial(SystemConfigSchema)
-export const SetHideGamePayload = v.object({ id: SlotIdSchema, hide: v.boolean() })
 export const SetFocusPayload = v.object({ id: v.nullable(SlotIdSchema) })
-
-export const MEMORY_PHASES = ['-', 'A', 'B', 'C', 'D', 'E'] as const
-export const SetPhasePayload = v.object({ phase: v.picklist(MEMORY_PHASES) })
-export type MemoryPhase = (typeof MEMORY_PHASES)[number]

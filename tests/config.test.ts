@@ -1,30 +1,58 @@
 import * as v from 'valibot'
 import { describe, expect, it } from 'vitest'
+import { migrateConfig } from '../src/main/migrations'
 import { ConfigSchema } from '../src/shared/schemas'
 
-// Config como a v0.1.0 salva: sem hideGame nos slots e sem hardwareAcceleration.
+const slots = ['slot-1', 'slot-2', 'slot-3', 'slot-4'].map((id, i) => ({
+  id,
+  label: `Alt ${i + 1}`,
+  enabled: i < 3,
+  muted: true,
+  zoom: 1,
+}))
+
+// Config como a v0.1.0 salva: sem hardwareAcceleration nem memoryReload.
 const v010 = {
   version: 1,
   gameUrl: 'https://pokeidle.io',
-  slots: ['slot-1', 'slot-2', 'slot-3', 'slot-4'].map((id, i) => ({
-    id,
-    label: `Alt ${i + 1}`,
-    enabled: i < 3,
-    muted: true,
-    zoom: 1,
-  })),
+  slots,
   twitch: { official: [{ login: 'axtlol', nome: 'aXtLOL' }], extras: [], disabled: [] },
   system: { startWithWindows: true, startHidden: true },
   window: { x: 0, y: 0, width: 1280, height: 800, maximized: true },
 }
 
-describe('ConfigSchema', () => {
-  it('aceita a config da v0.1.0 e preenche os campos novos com o padrão', () => {
-    const result = v.safeParse(ConfigSchema, v010)
-    expect(result.success).toBe(true)
-    if (!result.success) return
-    expect(result.output.slots.every((s) => s.hideGame === false)).toBe(true)
-    expect(result.output.system).toEqual({ startWithWindows: true, startHidden: true, hardwareAcceleration: true })
-    expect(result.output.twitch.official).toHaveLength(1)
+// Config como a v0.1.1 salva: GPU ligada gravada por padrão e hideGame (removido) nos slots.
+const v011 = {
+  ...v010,
+  slots: slots.map((s) => ({ ...s, hideGame: false })),
+  system: { startWithWindows: true, startHidden: true, hardwareAcceleration: true },
+}
+
+const load = (raw: unknown) => v.parse(ConfigSchema, migrateConfig(raw).config)
+
+describe('config', () => {
+  it('v0.1.0 migra para v2 com GPU desligada e recarregamento por memória ligado', () => {
+    const config = load(v010)
+    expect(config.version).toBe(2)
+    expect(config.system).toEqual({
+      startWithWindows: true,
+      startHidden: true,
+      hardwareAcceleration: false,
+      memoryReload: { enabled: true, limitMb: 500 },
+    })
+    expect(config.twitch.official).toHaveLength(1)
+    expect(config.window?.maximized).toBe(true)
+  })
+
+  it('v0.1.1 migra desligando a GPU e descarta o hideGame', () => {
+    const config = load(v011)
+    expect(config.system.hardwareAcceleration).toBe(false)
+    expect(config.slots[0]).not.toHaveProperty('hideGame')
+  })
+
+  it('config v2 não é migrada de novo: a escolha de religar a GPU é respeitada', () => {
+    const v2 = { ...v011, version: 2, system: { ...v011.system, hardwareAcceleration: true } }
+    expect(migrateConfig(v2).migrated).toBe(false)
+    expect(load(v2).system.hardwareAcceleration).toBe(true)
   })
 })

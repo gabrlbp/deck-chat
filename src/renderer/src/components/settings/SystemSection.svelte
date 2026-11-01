@@ -1,9 +1,20 @@
 <script lang="ts">
   import type { SystemState } from '../../../../shared/ipc'
+  import { MEMORY_RELOAD_MAX_MB, MEMORY_RELOAD_MIN_MB } from '../../../../shared/schemas'
 
   let { system }: { system: SystemState } = $props()
 
   const gpuPending = $derived(system.hardwareAcceleration !== system.hardwareAccelerationActive)
+
+  const reload = $derived(system.memoryReload)
+  function setLimit(event: Event & { currentTarget: HTMLInputElement }) {
+    const value = Math.round(Number(event.currentTarget.value))
+    if (Number.isFinite(value) && value >= MEMORY_RELOAD_MIN_MB && value <= MEMORY_RELOAD_MAX_MB) {
+      window.deck.setSystem({ memoryReload: { ...reload, limitMb: value } })
+    } else {
+      event.currentTarget.value = String(reload.limitMb)
+    }
+  }
 </script>
 
 <h2>Sistema</h2>
@@ -43,12 +54,12 @@
   </label>
 </section>
 
-<h3>Desempenho <span class="tag">teste de memória S5</span></h3>
+<h3>Desempenho</h3>
 <section class="card">
   <label class="row">
     <span>
       Aceleração por GPU
-      <small>desligada, o Chromium dispensa o processo de GPU e desenha tudo na CPU; vale após reiniciar</small>
+      <small>ligada, usa ~800 MB a mais de RAM; desligada, o desenho vai para a CPU. Vale após reiniciar</small>
     </span>
     <input
       type="checkbox"
@@ -65,6 +76,37 @@
       <button onclick={() => window.deck.relaunch()}>Reiniciar agora</button>
     </div>
   {/if}
+
+  <label class="row">
+    <span>
+      Recarregar slot que passar do limite de memória
+      <small>os jogos crescem com as horas; recarregar devolve a memória. Um slot por vez, no máximo 1x por hora cada, e nunca um slot na tela com a janela em foco</small>
+    </span>
+    <input
+      type="checkbox"
+      class="switch"
+      checked={reload.enabled}
+      onchange={(e) => window.deck.setSystem({ memoryReload: { ...reload, enabled: e.currentTarget.checked } })}
+    />
+  </label>
+  <label class="row" class:disabled={!reload.enabled}>
+    <span>
+      Limite por slot
+      <small>memória privada de cada slot (veja os valores atuais em Sobre)</small>
+    </span>
+    <span class="limit">
+      <input
+        type="number"
+        min={MEMORY_RELOAD_MIN_MB}
+        max={MEMORY_RELOAD_MAX_MB}
+        step="50"
+        disabled={!reload.enabled}
+        value={reload.limitMb}
+        onchange={setLimit}
+      />
+      MB
+    </span>
+  </label>
 </section>
 
 <style>
@@ -110,14 +152,22 @@
     margin: 20px 0 8px;
     font-size: 14px;
   }
-  .tag {
-    font-size: 11px;
-    font-weight: normal;
-    color: var(--warn);
-    border: 1px solid var(--warn);
-    border-radius: 99px;
-    padding: 0 8px;
-    margin-left: 6px;
+  .limit {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    flex: none;
+  }
+  input[type='number'] {
+    width: 80px;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px 6px;
+    text-align: right;
   }
   .pending {
     color: var(--warn);

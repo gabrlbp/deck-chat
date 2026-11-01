@@ -274,7 +274,16 @@ Ordem combinada: B1 → S5 → F6 → (F7/F8 conforme o S5). Os itens 5 (snipe n
 | Causa provável | `win.maximize()` ao restaurar o estado salvo **também mostra a janela** (comportamento documentado do Electron). Acontece se o app estava maximizado ao fechar |
 | Correção | Aplicar o maximizado só quando a janela for mostrada (ao abrir normal ou ao sair da bandeja pela primeira vez) |
 | Diagnóstico | Registrar no `deck.log` os argumentos recebidos (`--hidden` sim/não), para confirmar que o Windows repassa o argumento |
-| Status | Corrigido na v0.1.1. Causa reproduzida isoladamente (janela escondida + `maximize()` → visível). Falta confirmar no boot do Windows |
+| Status | Corrigido na v0.1.1. Causa reproduzida isoladamente (janela escondida + `maximize()` → visível). O `deck.log` da v0.1.0 confirma que o Windows repassa o `--hidden` (boots de 29 e 30/10 registram "na bandeja"). Falta confirmar no boot do Windows |
+| Ajuste (v0.1.2) | Sem o `maximize()` precoce, a janela passou a depender só do evento `ready-to-show`, que no Linux/Wayland às vezes não dispara (a janela não aparecia). Plano B: se o evento não vier em 3 s, a janela é exibida mesmo assim (exceto com `--hidden`) |
+
+#### B2 — Bug: o vigia fica parado se o jogo não volta após recarregar
+
+| | |
+|---|---|
+| Sintoma | 29/10, 17:04 (horário local): atualização da infraestrutura do servidor do jogo. O vigia recarregou os 3 slots, as páginas voltaram sem título e **nenhuma mensagem chegou por 67 min**, até reiniciar o app |
+| Causa | O vigia só volta a agir depois da primeira mensagem do jogo; se o jogo não volta, ele nunca tenta de novo |
+| Correção (v0.1.2) | Depois de um recarregamento do vigia, enquanto não chegar nenhuma mensagem, recarrega de novo em 3, 6, 12 e depois a cada 15 min. A barra do slot e o cartão do modo foco mostram "sem resposta · nova tentativa às HH:MM". Limpar a sessão ou desativar o slot encerra as tentativas (na tela de login o jogo não manda mensagens) |
 
 #### F6 — Modo foco: um slot ocupa o grid
 
@@ -298,41 +307,35 @@ Ordem combinada: B1 → S5 → F6 → (F7/F8 conforme o S5). Os itens 5 (snipe n
 | D | Aceleração por GPU desligada (exige reiniciar) | Troca de RAM do processo de GPU por CPU |
 | E | Uma noite rodando | Se a memória do jogo cresce com o tempo (vazamento) e quanto um recarregar devolve |
 
-Ferramentas na v0.1.1: medidor em Configurações > Sobre (CSV `logs/s5-memory.csv`, uma linha por processo por minuto, com a fase), botão 🙈 por slot e opção de GPU em Sistema. Protocolo em `spikes/s5-memory/README.md`.
+**Resultado (01/11/2026, Windows, v0.1.1)** — medianas da memória privada; análise completa em `spikes/s5-memory/README.md`:
 
-Prévia no Linux (sem login, não conclusiva): com a GPU desligada **o processo de GPU continua existindo** (desenho por software), caindo de ~147 para ~91 MB.
+| Fase | Total | Processo de GPU | Slots (cada) |
+|---|---|---|---|
+| A normal | 2166 MB | 995 MB | 304–335 MB |
+| B opção do jogo (esconde o canvas) | 1946 MB (−220) | 827 MB | 309–328 MB |
+| C 🙈 do app (tela preta) | 2101 MB (−65, variação) | 997 MB | 269–343 MB |
+| D GPU desligada | **1372 MB (−800)** | 27 MB | 359–387 MB |
+| E noite (9 h) | slots ~350 → ~470 MB cada | estável ~868 MB | +13 a +30 MB/h |
 
-Critério: decidir F7 e F8 com números. Hipótese a confirmar: esconder o jogo corta CPU/GPU (o slot escondido desenha a ~143 fps, S3), mas a RAM do JavaScript e dos recursos do jogo continua ocupada, porque a página precisa seguir rodando.
+Conclusões:
+- O processo de GPU do Chromium é ~40% da memória do app e não diminui na bandeja. Desligar a aceleração economiza ~800 MB privados (−360 MB em working set), e o jogo ficou normal (sem travamento perceptível, CPU sobra).
+- Esconder o jogo pelo app não economiza: a página continua rodando com a mesma memória.
+- Os slots crescem com as horas; recarregar devolve a memória.
+- O código do app em si é pequeno (main ~95 MB, interface ~50 MB).
 
-#### F7 — Modo baixo consumo por slot (depende do S5)
+#### F7 — Modo baixo consumo por slot: **cancelado**
 
-Ideia: substituir o jogo do slot por uma tela preta para economizar memória.
+O S5 mostrou que esconder o jogo (tela preta) não reduz a RAM. O botão 🙈 saiu na v0.1.2. Para ver as estatísticas sem o canvas, o jogo já tem a própria opção, que ainda economiza ~220 MB de GPU.
 
-- Se o S5 mostrar que esconder o jogo **não** reduz RAM de forma relevante, o painel de estatísticas próprio **não será feito**: o jogo já tem uma opção nativa que esconde o canvas e mostra essas informações (e mais).
-- Se reduzir, o painel mostra no lugar do jogo, com totais e por hora **desde o início da hunt** (trocar de hunt zera; botão de zerar manual):
+#### F8 — Redução de memória (v0.1.2)
 
-| Campo | Fonte (mensagens do jogo, confirmada no S4) |
+| ID | Requisito |
 |---|---|
-| Hunt | `estado.huntSlug` |
-| XP do treinador: total, por hora, quanto falta | `estado.xp`, `xpProximo` |
-| XP do pokémon: mesmos campos | `estado.pkMud[]` (`xp`, `xpNivel`, `xpProximo`) |
-| Lucro líquido, por hora e gasto | variação de `estado.gold`; gasto = ouro das mortes − lucro líquido (validar com compras reais) |
-| Abates e capturas: total e por hora | eventos `morte` e `capturado` |
-| Shinies vistos e pegos | `bola.shiny`, `fugiu.shiny`, `capturado.pokemon.shiny` |
-| Poções e pokébolas restantes (tempo real) | `estado.items` / `estado.balls` com os IDs de `automation.potionIds` / `ballIds` |
-| Drops da outland | `morte.drops` |
+| F8.1 | **GPU desligada por padrão.** Config migrada para a versão 2: quem já tinha a opção salva também passa a desligada (uma única vez). Religar continua em Sistema > Desempenho (vale após reiniciar) |
+| F8.2 | **Recarregar slot por limite de memória**: ligado por padrão, limite de 500 MB de memória privada por slot (ajustável de 300 a 2000 MB em Sistema > Desempenho). Um slot por vez (5 min entre recarregamentos), no máximo 1x por hora cada, só slot carregado e respondendo, e nunca um slot na tela com a janela em foco (você pode estar usando). Registrado no `deck.log` |
+| F8.3 | O medidor do S5 fica no app: tabela em Sobre (a cada minuto) e histórico em `logs/memory.csv` (uma amostra a cada 10 min; acima de 5 MB vira `memory.old.csv`) |
 
-#### F8 — Redução de memória do app (depende do S5)
-
-Candidatos, a aplicar conforme os números:
-
-| Medida | Ganho esperado |
-|---|---|
-| Corretor ortográfico desligado nos slots (`spellcheck: false`) | Pequeno, sem efeito colateral |
-| Esconder o canvas do jogo por CSS enquanto o slot não está visível | CPU/GPU certo; RAM a medir |
-| Aceleração por GPU desligada | Remove o processo de GPU; custa CPU (que sobra) |
-| Recarregar o slot preventivamente a cada X horas | Só se o S5 mostrar crescimento de memória com o tempo |
-| Indicador de memória por slot na tela Sobre (o medidor do S5 fica no app) | Visibilidade para decidir quando recarregar |
+Descartados: esconder o canvas por CSS (o 🙈 não economizou) e corretor ortográfico (ganho irrelevante perto dos números acima).
 
 #### Outras ideias (não comprometidas)
 

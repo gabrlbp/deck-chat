@@ -35,13 +35,13 @@ describe('toSample', () => {
 })
 
 describe('toCsvRows', () => {
-  it('uma linha por processo + TOTAL, com o contexto da fase', () => {
+  it('uma linha por processo + TOTAL, com GPU e estado da janela', () => {
     const sample = toSample(metrics.slice(3, 4), known, Date.UTC(2026, 9, 31, 12))
-    const rows = toCsvRows(sample, { phase: 'C', gpu: true, window: 'bandeja', hiddenSlots: ['slot-1', 'slot-2'] })
-    expect(CSV_HEADER.split(',')).toHaveLength(10)
+    const rows = toCsvRows(sample, { gpu: false, window: 'bandeja' })
+    expect(CSV_HEADER.split(',')).toHaveLength(8)
     expect(rows).toEqual([
-      '2026-10-31T12:00:00.000Z,C,on,bandeja,slot-1 slot-2,slot-1 · AltTeste,Tab,4,300,250',
-      '2026-10-31T12:00:00.000Z,C,on,bandeja,slot-1 slot-2,TOTAL,-,-,300,250',
+      '2026-10-31T12:00:00.000Z,off,bandeja,slot-1 · AltTeste,Tab,4,300,250',
+      '2026-10-31T12:00:00.000Z,off,bandeja,TOTAL,-,-,300,250',
     ])
   })
 })

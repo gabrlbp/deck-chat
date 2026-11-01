@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import * as v from 'valibot'
 import { ConfigSchema, DEFAULT_CONFIG, type Config } from '../shared/schemas'
 import { log } from './logger'
+import { migrateConfig } from './migrations'
 
 const configPath = () => join(app.getPath('userData'), 'config.json')
 
@@ -12,8 +13,15 @@ export function loadConfig(): Config {
   if (!existsSync(path)) return structuredClone(DEFAULT_CONFIG)
 
   try {
-    const result = v.safeParse(ConfigSchema, JSON.parse(readFileSync(path, 'utf8')))
-    if (result.success) return result.output
+    const { config, migrated } = migrateConfig(JSON.parse(readFileSync(path, 'utf8')))
+    const result = v.safeParse(ConfigSchema, config)
+    if (result.success) {
+      if (migrated) {
+        saveConfig(result.output)
+        log(`config migrada para a versão ${result.output.version} (GPU desligada por padrão)`)
+      }
+      return result.output
+    }
     log('config inválida, usando a padrão:', v.summarize(result.issues))
   } catch (err) {
     log('config ilegível, usando a padrão:', String(err))

@@ -6,6 +6,7 @@ import type { EventDraft } from '../game/events'
 import { log } from '../logger'
 import { GameTap } from './GameTap'
 import { applySlotPolicy } from './policy'
+import { nextRecovery, retryDelay, startRecovery, type Recovery } from './recovery'
 
 type Slot = {
   view: WebContentsView | null
@@ -15,6 +16,10 @@ type Slot = {
   msgsPerMin?: number
   crashReload?: NodeJS.Timeout
   failedAt?: number
+  /** recarregado pelo vigia e o jogo ainda não voltou a mandar mensagens (B2) */
+  recovery?: Recovery
+  /** último recarregamento por limite de memória (F8) */
+  memoryReloadAt?: number
 }
 
 const HIDDEN: Bounds = { x: 0, y: 0, width: 0, height: 0 }
@@ -63,7 +68,7 @@ export class SlotManager {
   states(): SlotState[] {
     return this.config.slots.map((cfg) => {
       const slot = this.slot(cfg.id)
-      return { ...cfg, status: slot.status, game: this.gameInfo(slot) }
+      return { ...cfg, status: slot.status, game: this.gameInfo(slot), retryAt: slot.recovery?.nextAt }
     })
   }
 
@@ -122,13 +127,26 @@ export class SlotManager {
     for (const cfg of this.config.slots) this.applyVisibility(cfg.id)
   }
 
-  /** Esconde o jogo deste slot (tela preta na UI); a página continua rodando. Spike S5 / F7. */
-  setHideGame(id: SlotId, hide: boolean): void {
-    this.cfg(id).hideGame = hide
-    this.persist()
-    this.applyVisibility(id)
-    log(`[${id}] jogo ${hide ? 'escondido' : 'visível'}`)
-    this.onChange()
+  /** Situação de cada slot ativo para o recarregamento por limite de memória (F8). */
+  guardInfo(windowFocused: boolean): { id: SlotId; pid: number; ok: boolean; inUse: boolean; lastReloadAt?: number }[] {
+    return this.processIds().map(({ id, pid }) => {
+      const slot = this.slot(id)
+      return {
+        id,
+        pid,
+        ok: slot.status === 'ok' && !slot.recovery,
+        inUse: windowFocused && this.isShown(id),
+        lastReloadAt: slot.memoryReloadAt,
+      }
+    })
+  }
+
+  reloadForMemory(id: SlotId, memoryMb: number, limitMb: number): void {
+    const slot = this.slot(id)
+    if (!slot.view) return
+    slot.memoryReloadAt = Date.now()
+    log(`[${id}] usando ${Math.round(memoryMb)} MB (limite ${limitMb} MB), recarregando para liberar memória`)
+    slot.view.webContents.reload()
   }
 
   /** PID do processo de cada slot ativo, para o medidor de memória. */
@@ -148,9 +166,9 @@ export class SlotManager {
     log(id ? `[${id}] em foco` : 'foco desligado')
   }
 
-  /** O jogo do slot está na tela: UI liberada, jogo não escondido e (no modo foco) é o slot focado. */
+  /** O jogo do slot está na tela: UI liberada e (no modo foco) é o slot focado. */
   private isShown(id: SlotId): boolean {
-    return this.visible && !this.cfg(id).hideGame && (this.focus === null || this.focus === id)
+    return this.visible && (this.focus === null || this.focus === id)
   }
 
   private applyVisibility(id: SlotId): void {
@@ -187,6 +205,8 @@ export class SlotManager {
     await ses.clearStorageData()
     await ses.clearCache()
     slot.tap?.game.reset()
+    // na tela de login o jogo não manda mensagens: não é caso de recuperação
+    slot.recovery = undefined
     log(`[${id}] sessão limpa`)
     if (slot.view) void slot.view.webContents.loadURL(this.config.gameUrl)
     this.onChange()
@@ -207,14 +227,31 @@ export class SlotManager {
       }
 
       const silent = slot.tap.silentForMs(now)
+
+      // B2: o vigia já recarregou; enquanto o jogo não mandar nenhuma mensagem, tenta de novo
+      if (slot.recovery) {
+        if (silent !== null) {
+          log(`[${cfg.id}] jogo voltou a responder após ${slot.recovery.attempt + 1} recarregamento(s)`)
+          slot.recovery = undefined
+        } else if (slot.status !== 'error' && slot.status !== 'loading' && now >= slot.recovery.nextAt) {
+          slot.recovery = nextRecovery(slot.recovery, now)
+          log(
+            `[${cfg.id}] jogo ainda sem resposta, tentativa ${slot.recovery.attempt + 1}; próxima em ${retryDelay(slot.recovery.attempt) / 60_000} min`,
+          )
+          slot.view.webContents.reload()
+        }
+        continue
+      }
+
       if (slot.status === 'ok' && silent !== null && silent > UNRESPONSIVE_MS) {
         log(`[${cfg.id}] sem mensagens do jogo há ${Math.round(silent / 1000)}s, recarregando`)
         this.setStatus(cfg.id, 'unresponsive')
         this.emit(cfg.id, {
           kind: 'problem',
           title: 'Sem resposta do jogo',
-          detail: `${Math.round(silent / 60_000)} min sem mensagens do servidor, slot recarregado`,
+          detail: `${Math.round(silent / 60_000)} min sem mensagens do servidor; slot recarregado, tenta de novo até o jogo voltar`,
         })
+        slot.recovery = startRecovery(now)
         slot.view.webContents.reload()
       }
     }
@@ -333,6 +370,7 @@ export class SlotManager {
     slot.tap = null
     slot.status = 'disabled'
     slot.msgsPerMin = undefined
+    slot.recovery = undefined
   }
 
   private setStatus(id: SlotId, status: SlotStatus): void {

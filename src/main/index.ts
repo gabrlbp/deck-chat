@@ -1,10 +1,11 @@
 import { app, powerMonitor } from 'electron'
 import { readFileSync } from 'node:fs'
-import { IPC, type AppState, type SlotStatus } from '../shared/ipc'
+import { IPC, type AppState, type MemorySample, type SlotStatus } from '../shared/ipc'
 import type { SystemConfig } from '../shared/schemas'
 import { summarize } from '../shared/twitch'
 import { applyAutoStart, autoStartSupported } from './autostart'
 import { MemoryMonitor } from './diagnostics/MemoryMonitor'
+import { pickSlotToReload } from './diagnostics/memoryGuard'
 import { EventFeed } from './game/EventFeed'
 import { registerIpc } from './ipc'
 import { log } from './logger'
@@ -58,7 +59,7 @@ async function bootstrap(): Promise<void> {
       autoStartSupported: autoStartSupported(),
       hardwareAccelerationActive: app.isHardwareAccelerationEnabled(),
     },
-    diagnostics: memory.state(),
+    memory: memory.state(),
   })
 
   const trayStatus = (): TrayStatus => {
@@ -103,10 +104,25 @@ async function bootstrap(): Promise<void> {
     context: () => ({
       gpu: app.isHardwareAccelerationEnabled(),
       window: win.isMinimized() ? 'minimizada' : win.isVisible() ? 'visivel' : 'bandeja',
-      hiddenSlots: slots.states().filter((s) => s.enabled && s.hideGame).map((s) => s.id),
     }),
-    onSample: broadcast,
+    onSample: (sample) => {
+      guardMemory(sample)
+      broadcast()
+    },
   })
+
+  // F8: recarrega o slot que passou do limite de memória (um por vez, no máximo 1x/hora por slot)
+  let lastMemoryReloadAt: number | undefined
+  const guardMemory = (sample: MemorySample) => {
+    const { enabled, limitMb } = config.system.memoryReload
+    if (!enabled) return
+    const byPid = new Map(sample.processes.map((p) => [p.pid, p.privateMb ?? p.workingSetMb]))
+    const candidates = slots.guardInfo(win.isVisible() && win.isFocused()).map((s) => ({ ...s, memoryMb: byPid.get(s.pid) ?? 0 }))
+    const id = pickSlotToReload(candidates, limitMb, sample.at, lastMemoryReloadAt)
+    if (!id) return
+    lastMemoryReloadAt = sample.at
+    slots.reloadForMemory(id, candidates.find((c) => c.id === id)?.memoryMb ?? 0, limitMb)
+  }
 
   const setSystem = (patch: Partial<SystemConfig>) => {
     config.system = { ...config.system, ...patch }
@@ -128,7 +144,6 @@ async function bootstrap(): Promise<void> {
     getState,
     setSystem,
     relaunch,
-    setPhase: (phase) => memory.setPhase(phase),
     releasesUrl: RELEASES_URL,
   })
   applyAutoStart(config.system)

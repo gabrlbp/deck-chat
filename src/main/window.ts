@@ -1,9 +1,11 @@
 import { BrowserWindow, screen } from 'electron'
 import { join } from 'node:path'
 import type { WindowState } from '../shared/schemas'
+import { log } from './logger'
 import appIcon from '../../resources/icon.png?asset'
 
 const SAVE_DELAY_MS = 500
+const READY_TIMEOUT_MS = 3000
 
 /** Só restaura a posição se ela ainda cair numa tela conectada (ex.: monitor removido). */
 function visibleBounds(saved: WindowState | undefined) {
@@ -50,11 +52,15 @@ export function createMainWindow(
     win.maximize()
   }
 
-  win.once('ready-to-show', () => {
-    if (startHidden) return
+  const showOnStart = (reason: string) => {
+    if (startHidden || win.isDestroyed() || win.isVisible()) return
+    if (reason !== 'ready-to-show') log(`janela exibida por ${reason}`)
     win.show()
     restoreMaximized()
-  })
+  }
+  win.once('ready-to-show', () => showOnStart('ready-to-show'))
+  // rede de segurança: no Wayland o ready-to-show às vezes nunca chega para uma janela ainda escondida
+  setTimeout(() => showOnStart('timeout (ready-to-show não veio em 3 s)'), READY_TIMEOUT_MS)
   // primeira vez que sai da bandeja
   win.on('show', restoreMaximized)
 

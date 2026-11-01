@@ -23,10 +23,10 @@
     <strong>{slotName(slot)}</strong>
   </span>
   {#if gameText}<span class="muted">{gameText}</span>{/if}
-  {#if bad}
+  {#if slot.retryAt !== undefined}
+    <span class="err">sem resposta · nova tentativa às {timeFormat.format(slot.retryAt)}</span>
+  {:else if bad}
     <span class="err">{slot.status === 'error' ? 'erro ao carregar' : 'sem resposta, recarregando'}</span>
-  {:else if slot.hideGame}
-    <span class="muted">jogo escondido</span>
   {/if}
   {#if lastEvent}
     <span class="event {lastEvent.kind}">

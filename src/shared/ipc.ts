@@ -1,4 +1,4 @@
-import type { Bounds, MemoryPhase, SlotId, SystemConfig } from './schemas'
+import type { Bounds, SlotId, SystemConfig } from './schemas'
 
 export const IPC = {
   getState: 'app:getState',
@@ -27,9 +27,7 @@ export const IPC = {
   setSystem: 'system:set',
   openReleases: 'app:openReleases',
   relaunch: 'app:relaunch',
-  setHideGame: 'slots:setHideGame',
   setFocus: 'slots:setFocus',
-  setPhase: 'diagnostics:setPhase',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -49,8 +47,9 @@ export type SlotState = {
   enabled: boolean
   muted: boolean
   zoom: number
-  hideGame: boolean
   status: SlotStatus
+  /** o vigia recarregou e o jogo ainda não voltou: próxima tentativa (B2) */
+  retryAt?: number
   game: SlotGameInfo
 }
 
@@ -115,18 +114,13 @@ export type MemorySample = {
   processes: ProcessMemory[]
 }
 
-export type DiagnosticsState = {
-  /** fase do teste S5 escolhida na tela Sobre; vai em cada linha do CSV */
-  phase: MemoryPhase
-  memory: MemorySample | null
-}
-
 export type AppState = {
   slots: SlotState[]
   info: AppInfo
   twitch: TwitchState
   system: SystemState
-  diagnostics: DiagnosticsState
+  /** última medição de memória (a cada minuto) */
+  memory: MemorySample | null
 }
 
 export interface DeckApi {
@@ -138,7 +132,6 @@ export interface DeckApi {
   hideToTray(): void
   setSystem(patch: Partial<SystemConfig>): void
   relaunch(): void
-  setPhase(phase: MemoryPhase): void
   slots: {
     setBounds(id: SlotId, bounds: Bounds): void
     setMuted(id: SlotId, muted: boolean): void
@@ -148,7 +141,6 @@ export interface DeckApi {
     setLabel(id: SlotId, label: string): void
     /** esconde as views nativas (o jogo continua rodando) para a UI poder ficar por cima */
     setVisible(visible: boolean): void
-    setHideGame(id: SlotId, hide: boolean): void
     /** modo foco: `null` volta ao grid */
     setFocus(id: SlotId | null): void
     capture(): Promise<SlotSnapshot[]>

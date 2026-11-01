@@ -181,6 +181,14 @@ O bônus some em **menos de 5 min** fora do chat, então toda queda precisa ser 
 
 Usamos um wrapper próprio em vez de `electron-store` porque é pouco código, dá controle sobre o schema e as migrações, e é bom para aprender.
 
+Duas regras para mudar a config sem perder a do usuário:
+- **Campo novo:** `v.optional(schema, padrão)`. Configs antigas continuam válidas (uma config inválida é descartada e o app volta ao padrão).
+- **Mudar um valor já salvo** (ex.: GPU desligada por padrão na v2): subir `CONFIG_VERSION` e converter em `main/migrations.ts`, que roda antes da validação e salva o resultado. Cada passo tem teste em `tests/config.test.ts`.
+
+```text
+config.json → migrateConfig (v1 → v2: GPU desligada) → valida (Valibot) → salva se migrou
+```
+
 ### ADR-007 — Segurança do Electron
 
 Duas regras separam a UI própria do jogo:
@@ -230,15 +238,18 @@ deck-chat/
 │   │   ├── logger.ts             # deck.log + CSVs em userData/logs
 │   │   ├── diagnostics/
 │   │   │   ├── memory.ts         # métricas → amostra nomeada + linhas do CSV (puro, testável)
-│   │   │   └── MemoryMonitor.ts  # app.getAppMetrics() a cada minuto → logs/s5-memory.csv (spike S5)
-│   │   ├── store.ts              # config.json + migrações
+│   │   │   ├── memoryGuard.ts    # qual slot recarregar por limite de memória (F8, puro)
+│   │   │   └── MemoryMonitor.ts  # app.getAppMetrics() a cada minuto → tela Sobre, guarda, logs/memory.csv
+│   │   ├── store.ts              # config.json (valida, migra e salva)
+│   │   ├── migrations.ts         # configs de versões anteriores → formato atual (puro)
 │   │   ├── secrets.ts            # safeStorage para os tokens
 │   │   ├── tray.ts               # ícone, menu, fechar → bandeja
 │   │   ├── autostart.ts          # setLoginItemSettings
 │   │   ├── slots/
 │   │   │   ├── SlotManager.ts    # cria/destroi views, bounds, mute, reload, crash, visibilidade, capturePage
 │   │   │   ├── policy.ts         # navegação permitida, popups about:blank, window open handler
-│   │   │   └── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde
+│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde
+│   │   │   └── recovery.ts       # novas tentativas do vigia quando o jogo não volta (B2, puro)
 │   │   ├── game/
 │   │   │   ├── messages.ts       # schemas Valibot das mensagens do jogo (batalha, estado, shiny.captura); tolerantes
 │   │   │   ├── GameState.ts      # junta os "estado" parciais por slot: nick, nível, hunt, bolas, twitch…

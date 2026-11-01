@@ -61,7 +61,7 @@
         <button onclick={() => window.deck.openReleases()}>Abrir Releases ↗</button>
         <button onclick={() => window.deck.openLogs()}>Abrir pasta de logs</button>
       </div>
-      <MemoryPanel diagnostics={app.diagnostics} />
+      <MemoryPanel memory={app.memory} />
     {/if}
   </div>
 </div>

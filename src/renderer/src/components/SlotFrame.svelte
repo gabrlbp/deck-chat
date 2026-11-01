@@ -18,6 +18,8 @@
     disabled: 'desativado',
   }
 
+  const timeFormat = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
   const gameText = $derived(
     [slot.game.level !== undefined ? `Nv ${slot.game.level}` : null, slot.game.hunt ?? null]
       .filter((part) => part !== null)
@@ -62,7 +64,11 @@
   >
     <span class="dot {slot.status}" title={statusLabel[slot.status]}></span>
     <strong>{slotName(slot)}</strong>
-    {#if slot.status !== 'ok'}
+    {#if slot.retryAt !== undefined}
+      <span class="silent" title="O vigia recarregou e o jogo ainda não voltou a responder">
+        sem resposta · nova tentativa às {timeFormat.format(slot.retryAt)}
+      </span>
+    {:else if slot.status !== 'ok'}
       <span class="muted">{statusLabel[slot.status]}</span>
     {/if}
     {#if gameText}
@@ -87,12 +93,6 @@
         ⛶
       </button>
       <button
-        title={slot.hideGame ? 'Mostrar o jogo' : 'Esconder o jogo (continua rodando; teste de memória S5)'}
-        onclick={() => window.deck.slots.setHideGame(slot.id, !slot.hideGame)}
-      >
-        {slot.hideGame ? '👁' : '🙈'}
-      </button>
-      <button
         title={slot.muted ? 'Desmutar' : 'Mutar'}
         onclick={() => window.deck.slots.setMuted(slot.id, !slot.muted)}
       >
@@ -105,12 +105,7 @@
     </div>
   </header>
 
-  <div class="area" class:hidden-game={slot.hideGame} bind:this={area}>
-    {#if slot.hideGame}
-      <p>Jogo escondido · continua rodando</p>
-      <button onclick={() => window.deck.slots.setHideGame(slot.id, false)}>Mostrar jogo</button>
-    {/if}
-  </div>
+  <div class="area" bind:this={area}></div>
 </section>
 
 <style>
@@ -179,17 +174,5 @@
   }
   .area {
     min-height: 0;
-  }
-  /* a view nativa do jogo está escondida: a área da própria UI aparece no lugar */
-  .area.hidden-game {
-    display: grid;
-    place-content: center;
-    justify-items: center;
-    gap: 10px;
-    background: #000;
-    color: var(--muted);
-  }
-  .area.hidden-game p {
-    margin: 0;
   }
 </style>

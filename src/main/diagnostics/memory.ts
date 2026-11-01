@@ -40,14 +40,14 @@ export function toSample(metrics: RawMetric[], known: Map<number, string>, at: n
   }
 }
 
-export const CSV_HEADER = 'time,phase,gpu,window,hidden_slots,process,type,pid,working_set_mb,private_mb'
+export const CSV_HEADER = 'time,gpu,window,process,type,pid,working_set_mb,private_mb'
 
-export type CsvContext = { phase: string; gpu: boolean; window: string; hiddenSlots: string[] }
+export type CsvContext = { gpu: boolean; window: string }
 
 /** Uma linha por processo + uma linha TOTAL. */
 export function toCsvRows(sample: MemorySample, ctx: CsvContext): string[] {
   const time = new Date(sample.at).toISOString()
-  const prefix = [time, ctx.phase, ctx.gpu ? 'on' : 'off', ctx.window, ctx.hiddenSlots.join(' ') || '-']
+  const prefix = [time, ctx.gpu ? 'on' : 'off', ctx.window]
   const cell = (value: string) => (/[",]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value)
   const row = (label: string, type: string, pid: number | string, ws: number, priv?: number) =>
     [...prefix, label, type, pid, ws, priv ?? ''].map((v) => cell(String(v))).join(',')
