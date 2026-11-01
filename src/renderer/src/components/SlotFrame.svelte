@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { SlotState, SlotStatus } from '../../../shared/ipc'
   import { slotName } from '../lib/slots'
-  import { openModal } from '../lib/ui.svelte'
+  import { openModal, toggleFocus, ui } from '../lib/ui.svelte'
 
   let { slot, layoutKey }: { slot: SlotState; layoutKey: string } = $props()
 
@@ -53,7 +53,13 @@
 </script>
 
 <section class="frame">
-  <header>
+  <!-- duplo clique na barra (fora dos botões) liga/desliga o foco; o ⛶ faz o mesmo pelo teclado -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <header
+    ondblclick={(e) => {
+      if (!(e.target as HTMLElement).closest('button')) toggleFocus(slot.id)
+    }}
+  >
     <span class="dot {slot.status}" title={statusLabel[slot.status]}></span>
     <strong>{slotName(slot)}</strong>
     {#if slot.status !== 'ok'}
@@ -73,6 +79,13 @@
     {/if}
 
     <div class="actions">
+      <button
+        class:on={ui.focus === slot.id}
+        title={ui.focus === slot.id ? 'Voltar ao grid (Esc)' : 'Foco: este slot ocupa o grid (duplo clique na barra)'}
+        onclick={() => toggleFocus(slot.id)}
+      >
+        ⛶
+      </button>
       <button
         title={slot.hideGame ? 'Mostrar o jogo' : 'Esconder o jogo (continua rodando; teste de memória S5)'}
         onclick={() => window.deck.slots.setHideGame(slot.id, !slot.hideGame)}
@@ -153,6 +166,10 @@
   }
   .silent {
     color: var(--err);
+  }
+  .actions button.on {
+    border-color: var(--twitch);
+    background: var(--twitch-soft);
   }
   .actions {
     display: flex;

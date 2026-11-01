@@ -8,6 +8,7 @@ import {
   SetEnabledPayload,
   SetLabelPayload,
   SetMutedPayload,
+  SetFocusPayload,
   SetHideGamePayload,
   SetPhasePayload,
   SetSystemPayload,
@@ -81,6 +82,7 @@ export function registerIpc(win: BrowserWindow, deps: Deps): void {
   on(IPC.relaunch, v.undefined(), () => deps.relaunch())
   on(IPC.setPhase, SetPhasePayload, ({ phase }) => deps.setPhase(phase))
   on(IPC.setHideGame, SetHideGamePayload, ({ id, hide }) => slots.setHideGame(id, hide))
+  on(IPC.setFocus, SetFocusPayload, ({ id }) => slots.setFocus(id))
 
   on(IPC.setBounds, SetBoundsPayload, ({ id, bounds }) => slots.setBounds(id, bounds))
   on(IPC.setMuted, SetMutedPayload, ({ id, muted }) => slots.setMuted(id, muted))

@@ -23,6 +23,7 @@ const api: DeckApi = {
     setLabel: (id, label) => ipcRenderer.send(IPC.setLabel, { id, label }),
     setVisible: (visible) => ipcRenderer.send(IPC.setVisible, { visible }),
     setHideGame: (id, hide) => ipcRenderer.send(IPC.setHideGame, { id, hide }),
+    setFocus: (id) => ipcRenderer.send(IPC.setFocus, { id }),
     capture: () => ipcRenderer.invoke(IPC.capture),
     clearSession: (id) => ipcRenderer.invoke(IPC.clearSession, { id }),
   },

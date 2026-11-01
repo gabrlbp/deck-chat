@@ -28,6 +28,7 @@ export const IPC = {
   openReleases: 'app:openReleases',
   relaunch: 'app:relaunch',
   setHideGame: 'slots:setHideGame',
+  setFocus: 'slots:setFocus',
   setPhase: 'diagnostics:setPhase',
 } as const
 
@@ -148,6 +149,8 @@ export interface DeckApi {
     /** esconde as views nativas (o jogo continua rodando) para a UI poder ficar por cima */
     setVisible(visible: boolean): void
     setHideGame(id: SlotId, hide: boolean): void
+    /** modo foco: `null` volta ao grid */
+    setFocus(id: SlotId | null): void
     capture(): Promise<SlotSnapshot[]>
     clearSession(id: SlotId): Promise<void>
   }

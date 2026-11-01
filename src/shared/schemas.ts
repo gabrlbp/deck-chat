@@ -105,6 +105,7 @@ export const ChannelPayload = v.object({ login: TwitchLoginSchema })
 export const SetChannelEnabledPayload = v.object({ login: TwitchLoginSchema, enabled: v.boolean() })
 export const SetSystemPayload = v.partial(SystemConfigSchema)
 export const SetHideGamePayload = v.object({ id: SlotIdSchema, hide: v.boolean() })
+export const SetFocusPayload = v.object({ id: v.nullable(SlotIdSchema) })
 
 export const MEMORY_PHASES = ['-', 'A', 'B', 'C', 'D', 'E'] as const
 export const SetPhasePayload = v.object({ phase: v.picklist(MEMORY_PHASES) })

@@ -5,7 +5,10 @@
   let { title, children }: { title: string; children: Snippet } = $props()
 
   function onkeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') closeModal()
+    if (event.key !== 'Escape') return
+    // o App usa o Esc para sair do modo foco; só um dos dois deve reagir
+    event.preventDefault()
+    closeModal()
   }
 </script>
 

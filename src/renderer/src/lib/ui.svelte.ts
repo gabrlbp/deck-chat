@@ -13,12 +13,19 @@ export const ui = $state<{
   settingsSection: SettingsSection
   modal: Modal | null
   snapshots: SlotSnapshot[]
+  /** modo foco (F6): slot que ocupa o grid; não é salvo entre execuções */
+  focus: SlotId | null
 }>({
   tab: 'accounts',
   settingsSection: 'slots',
   modal: null,
   snapshots: [],
+  focus: null,
 })
+
+export function toggleFocus(id: SlotId): void {
+  ui.focus = ui.focus === id ? null : id
+}
 
 export function openSettings(section: SettingsSection): void {
   ui.settingsSection = section

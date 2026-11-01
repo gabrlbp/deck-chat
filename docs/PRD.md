@@ -284,6 +284,7 @@ Ordem combinada: B1 → S5 → F6 → (F7/F8 conforme o S5). Os itens 5 (snipe n
 | F6.2 | Os outros slots ficam **escondidos e rodando** (mesmo mecanismo da aba Configurações; S3: escondido não desacelera) |
 | F6.3 | Coluna lateral estreita com um cartão por alt fora do foco: nick, Nv, hunt, status (ok/erro) e o último evento. Clicar num cartão troca o foco para aquela alt |
 | F6.4 | `Esc` ou o botão ⛶ de novo voltam ao grid. O foco não é salvo entre execuções |
+| Status | Entregue na v0.1.1. O `Esc` só funciona com o teclado na interface do app: com o jogo em foco no teclado, a tecla vai para o jogo (que pode usá-la para fechar janelas internas). Nesse caso, sair pelo ⛶ ou por um cartão |
 
 #### S5 — Medição de memória (spike, antes de F7 e F8)
 

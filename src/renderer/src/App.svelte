@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AppState } from '../../shared/ipc'
+  import FocusCard from './components/FocusCard.svelte'
   import ModalHost from './components/ModalHost.svelte'
   import NotificationsPage from './components/NotificationsPage.svelte'
   import SettingsPage from './components/settings/SettingsPage.svelte'
@@ -30,9 +31,29 @@
   const enabled = $derived(app?.slots.filter((s) => s.enabled) ?? [])
   const cols = $derived(enabled.length <= 1 ? 1 : 2)
   const rows = $derived(enabled.length <= 2 ? 1 : 2)
-  // muda quando o grid se reorganiza, para cada slot remedir a sua área
-  const layoutKey = $derived(enabled.map((s) => s.id).join(','))
+
+  // modo foco (F6): só vale para um slot ativo; desativar o slot focado volta ao grid
+  const focused = $derived(enabled.find((s) => s.id === ui.focus))
+  $effect(() => {
+    if (ui.focus && app && !focused) ui.focus = null
+  })
+  $effect(() => {
+    window.deck.slots.setFocus(focused?.id ?? null)
+  })
+  const others = $derived(enabled.filter((s) => s.id !== focused?.id))
+
+  // muda quando o layout se reorganiza, para cada slot remedir a sua área
+  const layoutKey = $derived(`${enabled.map((s) => s.id).join(',')}|${focused?.id ?? ''}`)
+
+  function onkeydown(event: KeyboardEvent) {
+    // o modal trata o próprio Esc (e marca defaultPrevented); aqui o Esc sai do foco.
+    // Com o jogo em foco no teclado, o Esc vai para o jogo: use o botão ⛶ ou um cartão.
+    if (event.key !== 'Escape' || event.defaultPrevented || ui.modal || !ui.focus) return
+    ui.focus = null
+  }
 </script>
+
+<svelte:window {onkeydown} />
 
 {#if app}
   <div class="shell">
@@ -47,6 +68,19 @@
         Nenhum slot ativo.
         <button onclick={() => (ui.tab = 'settings')}>Ativar em Configurações</button>
       </div>
+    {:else if focused}
+      <main class="focus" class:solo={others.length === 0}>
+        {#key focused.id}
+          <SlotFrame slot={focused} {layoutKey} />
+        {/key}
+        {#if others.length}
+          <aside aria-label="Outras alts">
+            {#each others as slot (slot.id)}
+              <FocusCard {slot} />
+            {/each}
+          </aside>
+        {/if}
+      </main>
     {:else}
       <main
         class="grid"
@@ -80,6 +114,24 @@
     gap: 1px;
     background: var(--line);
     min-height: 0;
+  }
+  .focus {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 1px;
+    background: var(--line);
+    min-height: 0;
+  }
+  .focus.solo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  aside {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    background: var(--panel-2);
+    overflow: auto;
   }
   .filler,
   .empty {
