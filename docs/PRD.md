@@ -466,7 +466,7 @@ Prévia no Linux, sem login (não mede pontos): escondida, a live toca em 160p d
 | F10.6 | Travas do resgate: só com a Kick vinculada no jogo, 1 por vez, no máximo 6 por hora, recompensa encontrada pelo título que o jogo informa. Se o jogo não creditar em 5 min, o resgate para e avisa; mudar a opção libera de novo. Canal cujo resgate falhou espera 30 min |
 | F10.7 | Resgates e avisos aparecem em Notificações, no filtro novo "Bônus". A barra de cima e a bandeja mostram lives abertas e pontos da sessão |
 
-O resgate automático só foi testado por partes (escolha do bônus, do canal e o ID do pedido). O pedido real à Kick é o gravado no S6, mas ainda não rodou pelo app: **falta validar com a sua conta**.
+**Validado pelo dono na v0.1.4 (Windows, conta principal):** o farm abriu 2 lives sozinho, os pontos subiram, a Loja abriu e o resgate manual funcionou, e o resgate automático de um bônus deu certo. Falta ver na prática o modo "Resgatar todos" (a escolha do bônus só tem testes unitários).
 
 #### Outras ideias (não comprometidas)
 
