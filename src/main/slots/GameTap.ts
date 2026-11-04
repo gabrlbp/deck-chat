@@ -1,7 +1,7 @@
 import type { WebContents } from 'electron'
 import type { EventDraft } from '../game/events'
 import { SlotGame } from '../game/GameState'
-import { decode } from '../game/messages'
+import { decode, type TwitchInfo } from '../game/messages'
 import { battleDrafts } from '../game/parser'
 import { spikeJsonl } from '../diagnostics/spikeLog'
 import { log } from '../logger'
@@ -9,11 +9,6 @@ import { log } from '../logger'
 type WsFrameParams = { response: { opcode: number; payloadData: string } }
 
 const WS_TEXT_OPCODE = 1
-
-/** Spike S7: respostas do Mercado e das planilhas (CSV) que o jogo recebe quando você navega. */
-const MARKET_IN = new Set(['market', 'csv', 'comercio'])
-/** e os pedidos que a página manda, para conhecer os filtros. Só estes: o `hello` leva o token da sessão */
-const isMarketRequest = (t: unknown) => typeof t === 'string' && (t.startsWith('market.') || t.startsWith('csv.'))
 
 /**
  * Escuta (só leitura) as mensagens WebSocket que o servidor envia ao slot, via DevTools Protocol.
@@ -28,8 +23,8 @@ export class GameTap {
   private armed = false
   private messagesInWindow = 0
   private windowStartedAt = Date.now()
-  /** último bloco `kick` gravado (S6), para gravar só mudanças */
-  private lastKick = ''
+  /** último bloco `twitch` gravado (S8), sem a lista oficial, para gravar só mudanças */
+  private lastTwitch: string | null = null
 
   constructor(wc: WebContents, slotId: string, onDrafts: (drafts: EventDraft[]) => void) {
     this.wc = wc
@@ -37,7 +32,6 @@ export class GameTap {
     this.onDrafts = onDrafts
 
     wc.debugger.on('message', (_event, method, params) => {
-      if (method === 'Network.webSocketFrameSent') return this.recordSent(params as WsFrameParams)
       if (method !== 'Network.webSocketFrameReceived') return
       const { response } = params as WsFrameParams
       if (response.opcode === WS_TEXT_OPCODE) this.ingest(response.payloadData)
@@ -88,34 +82,19 @@ export class GameTap {
     this.armed = true
     this.messagesInWindow++
 
-    if (msg.t === 'outro' && MARKET_IN.has(msg.tipo)) {
-      spikeJsonl('s7-market', { slot: this.slotId, dir: 'in', msg: JSON.parse(raw) as unknown })
-    }
-    if (msg.t === 'estado' && msg.estado.kick !== undefined) this.recordKick(msg.estado.kick)
+    if (msg.t === 'estado' && msg.estado.twitch !== undefined) this.recordTwitch(msg.estado.twitch)
 
     const drafts =
       msg.t === 'batalha' ? battleDrafts(msg.ev) : msg.t === 'estado' ? this.game.apply(msg.estado) : []
     if (drafts.length) this.onDrafts(drafts)
   }
 
-  private recordSent({ response }: WsFrameParams): void {
-    if (response.opcode !== WS_TEXT_OPCODE || !response.payloadData.includes('"t"')) return
-    let json: unknown
-    try {
-      json = JSON.parse(response.payloadData)
-    } catch {
-      return
-    }
-    if (typeof json === 'object' && json !== null && isMarketRequest((json as { t?: unknown }).t)) {
-      spikeJsonl('s7-market', { slot: this.slotId, dir: 'out', msg: json })
-    }
-  }
-
-  /** Spike S6: como o bônus da Kick aparece no jogo (vinculado, bônus ativos, lista oficial). */
-  private recordKick(kick: unknown): void {
-    const text = JSON.stringify(kick)
-    if (text === this.lastKick) return
-    this.lastKick = text
-    spikeJsonl('s6-kick-game', { slot: this.slotId, kick })
+  /** Spike S8: o bloco novo da Twitch (vínculo, bônus, recompensas). A lista oficial só na primeira vez: os espectadores mudam o tempo todo. */
+  private recordTwitch(twitch: TwitchInfo): void {
+    const { oficiais, ...rest } = twitch
+    const text = JSON.stringify(rest)
+    if (text === this.lastTwitch) return
+    spikeJsonl('s8-twitch-game', { slot: this.slotId, twitch: this.lastTwitch === null ? twitch : rest, oficiais: oficiais?.length })
+    this.lastTwitch = text
   }
 }

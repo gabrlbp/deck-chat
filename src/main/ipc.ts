@@ -2,9 +2,10 @@ import { ipcMain, shell, type BrowserWindow, type WebContents } from 'electron'
 import * as v from 'valibot'
 import { IPC, type AppState } from '../shared/ipc'
 import {
-  ChannelPayload,
+  ChannelSlugPayload,
   SetBoundsPayload,
-  SetChannelEnabledPayload,
+  SetKickPayload,
+  TwitchPhasePayload,
   SetEnabledPayload,
   SetLabelPayload,
   SetMutedPayload,
@@ -13,27 +14,25 @@ import {
   SetVisiblePayload,
   SetZoomPayload,
   SlotIdPayload,
-  KickPhasePayload,
-  KickSlugPayload,
   type SystemConfig,
 } from '../shared/schemas'
 import { log, logDir } from './logger'
 import type { EventFeed } from './game/EventFeed'
 import type { SlotManager } from './slots/SlotManager'
-import type { TwitchService } from './twitch/TwitchService'
+import type { TwitchSpike } from './twitch/TwitchSpike'
 import type { Updater } from './updater'
-import type { KickSpike } from './kick/KickSpike'
+import type { KickFarm } from './kick/KickFarm'
 
 type Deps = {
   slots: SlotManager
-  twitch: TwitchService
+  twitch: TwitchSpike
   feed: EventFeed
   getState: () => AppState
   setSystem: (patch: Partial<SystemConfig>) => void
   relaunch: () => void
   releasesUrl: string
   updater: Updater
-  kick: KickSpike
+  kick: KickFarm
 }
 
 export function registerIpc(win: BrowserWindow, deps: Deps): void {
@@ -86,8 +85,8 @@ export function registerIpc(win: BrowserWindow, deps: Deps): void {
   on(IPC.updateInstall, v.undefined(), () => deps.updater.install())
   on(IPC.kickLogin, v.undefined(), () => deps.kick.login())
   on(IPC.kickLogout, v.undefined(), () => void deps.kick.logout())
-  on(IPC.kickSetPhase, KickPhasePayload, ({ phase }) => deps.kick.setPhase(phase))
-  on(IPC.kickOpenStore, KickSlugPayload, ({ slug }) => deps.kick.openStore(slug.toLowerCase()))
+  on(IPC.kickSet, SetKickPayload, (patch) => deps.kick.setConfig(patch))
+  on(IPC.kickOpenStore, ChannelSlugPayload, ({ slug }) => deps.kick.openStore(slug.toLowerCase()))
   on(IPC.setFocus, SetFocusPayload, ({ id }) => slots.setFocus(id))
 
   on(IPC.setBounds, SetBoundsPayload, ({ id, bounds }) => slots.setBounds(id, bounds))
@@ -98,13 +97,8 @@ export function registerIpc(win: BrowserWindow, deps: Deps): void {
   on(IPC.setLabel, SetLabelPayload, ({ id, label }) => slots.setLabel(id, label))
   on(IPC.setVisible, SetVisiblePayload, ({ visible }) => slots.setVisible(visible))
 
-  on(IPC.twitchLogin, v.undefined(), () => void twitch.login())
-  on(IPC.twitchCancelLogin, v.undefined(), () => twitch.cancelLogin())
-  on(IPC.twitchOpenActivate, v.undefined(), () => twitch.openActivate())
+  on(IPC.twitchLogin, v.undefined(), () => twitch.login())
   on(IPC.twitchLogout, v.undefined(), () => void twitch.logout())
-  on(IPC.twitchSetChannelEnabled, SetChannelEnabledPayload, ({ login, enabled }) =>
-    twitch.setChannelEnabled(login, enabled),
-  )
-  on(IPC.twitchAddExtra, ChannelPayload, ({ login }) => twitch.addExtra(login))
-  on(IPC.twitchRemoveExtra, ChannelPayload, ({ login }) => twitch.removeExtra(login))
+  on(IPC.twitchSetPhase, TwitchPhasePayload, ({ phase }) => twitch.setPhase(phase))
+  on(IPC.twitchOpenStore, ChannelSlugPayload, ({ slug }) => twitch.openStore(slug.toLowerCase()))
 }

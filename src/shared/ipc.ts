@@ -1,5 +1,6 @@
-import type { KickPhase, KickState } from './kick'
-import type { Bounds, SlotId, SystemConfig } from './schemas'
+import type { KickState } from './kick'
+import type { Bounds, KickConfig, SlotId, SystemConfig } from './schemas'
+import type { TwitchPhase, TwitchState } from './twitch'
 
 export const IPC = {
   getState: 'app:getState',
@@ -15,13 +16,6 @@ export const IPC = {
   setVisible: 'slots:setVisible',
   capture: 'slots:capture',
   clearSession: 'slots:clearSession',
-  twitchLogin: 'twitch:login',
-  twitchCancelLogin: 'twitch:cancelLogin',
-  twitchOpenActivate: 'twitch:openActivate',
-  twitchLogout: 'twitch:logout',
-  twitchSetChannelEnabled: 'twitch:setChannelEnabled',
-  twitchAddExtra: 'twitch:addExtra',
-  twitchRemoveExtra: 'twitch:removeExtra',
   eventsList: 'events:list',
   eventsClear: 'events:clear',
   eventNew: 'events:new',
@@ -33,8 +27,12 @@ export const IPC = {
   updateInstall: 'update:install',
   kickLogin: 'kick:login',
   kickLogout: 'kick:logout',
-  kickSetPhase: 'kick:setPhase',
+  kickSet: 'kick:set',
   kickOpenStore: 'kick:openStore',
+  twitchLogin: 'twitch:login',
+  twitchLogout: 'twitch:logout',
+  twitchSetPhase: 'twitch:setPhase',
+  twitchOpenStore: 'twitch:openStore',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -60,7 +58,7 @@ export type SlotState = {
   game: SlotGameInfo
 }
 
-export type GameEventKind = 'shiny' | 'drop' | 'capture' | 'problem'
+export type GameEventKind = 'shiny' | 'drop' | 'capture' | 'problem' | 'bonus'
 
 export type GameEvent = {
   id: string
@@ -76,34 +74,6 @@ export type GameEvent = {
 export type SlotSnapshot = { id: SlotId; dataUrl: string; bounds: Bounds }
 
 export type AppInfo = { version: string; electron: string; dataDir: string }
-
-export type TwitchAuth =
-  | { state: 'disconnected' }
-  | { state: 'pending'; userCode: string; verificationUri: string; expiresAt: number }
-  | { state: 'connected'; login: string }
-  | { state: 'reauth'; reason: string }
-
-export type TwitchConnection = 'offline' | 'connecting' | 'connected'
-
-export type ChannelView = {
-  login: string
-  nome: string
-  source: 'oficial' | 'extra'
-  enabled: boolean
-  /** `null` = desconhecido (canal extra, ou nenhum slot logado para o jogo informar) */
-  live: boolean | null
-  viewers?: number
-  /** a main está no chat (JOIN confirmado) */
-  present: boolean
-  /** quando o bônus estimado ativa: max(entrada no chat, início da live) + 4 min */
-  bonusAt?: number
-}
-
-export type TwitchState = {
-  auth: TwitchAuth
-  connection: TwitchConnection
-  channels: ChannelView[]
-}
 
 export type SystemState = SystemConfig & {
   /** iniciar com o Windows só funciona no app instalado no Windows */
@@ -136,12 +106,12 @@ export type UpdateState = UpdateStatus & { current: string }
 export type AppState = {
   slots: SlotState[]
   info: AppInfo
+  /** spike S8 */
   twitch: TwitchState
   system: SystemState
   /** última medição de memória (a cada minuto) */
   memory: MemorySample | null
   update: UpdateState
-  /** spike S6 */
   kick: KickState
 }
 
@@ -161,7 +131,7 @@ export interface DeckApi {
   kick: {
     login(): void
     logout(): void
-    setPhase(phase: KickPhase): void
+    set(patch: Partial<KickConfig>): void
     openStore(slug: string): void
   }
   slots: {
@@ -180,12 +150,9 @@ export interface DeckApi {
   }
   twitch: {
     login(): void
-    cancelLogin(): void
-    openActivate(): void
     logout(): void
-    setChannelEnabled(login: string, enabled: boolean): void
-    addExtra(login: string): void
-    removeExtra(login: string): void
+    setPhase(phase: TwitchPhase): void
+    openStore(login: string): void
   }
   events: {
     /** eventos da sessão, mais recente primeiro */

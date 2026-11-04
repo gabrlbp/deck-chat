@@ -370,7 +370,7 @@ Perguntas do S6: uma live escondida dentro do app conta pontos? E sem vídeo, ou
 | K5 | Só o chat popout de 2 canais, sem player (a mais leve) |
 | R | Resgate manual de um bônus pela "Loja ↗" (chat popout), com a rede gravada |
 
-Ferramenta (v0.1.3, aba Configurações > Kick (teste)): login da Kick numa sessão separada (`persist:kick`), seletor de fase, tabela dos oficiais com saldo, ganho na fase e memória, e o bloco `kick` de cada slot. Arquivos em `logs/`: `s6-kick.csv` (por minuto: canal, ao vivo, aberta, pontos, ganho, estado do player, memória), `s6-kick-game.jsonl` (bloco `kick` do jogo a cada mudança) e `s6-kick-net.jsonl` (pedidos à API da Kick feitos na Loja, sem cabeçalhos). Protocolo em `spikes/s6-kick/README.md`.
+Ferramenta (só na v0.1.3; a v0.1.4 troca pelo farm do F10, aba Configurações > Kick (teste)): login da Kick numa sessão separada (`persist:kick`), seletor de fase, tabela dos oficiais com saldo, ganho na fase e memória, e o bloco `kick` de cada slot. Arquivos em `logs/`: `s6-kick.csv` (por minuto: canal, ao vivo, aberta, pontos, ganho, estado do player, memória), `s6-kick-game.jsonl` (bloco `kick` do jogo a cada mudança) e `s6-kick-net.jsonl` (pedidos à API da Kick feitos na Loja, sem cabeçalhos). Protocolo em `spikes/s6-kick/README.md`.
 
 Prévia no Linux, sem login (não mede pontos): escondida, a live toca em 160p e o tempo do vídeo avança. Memória (working set) por canal: ~285 MB com vídeo (K1), ~280 MB sem vídeo (K2: o peso é a página, não o vídeo) e ~210 MB só com o chat (K5). A página de consultas usa ~90 MB.
 
@@ -409,14 +409,15 @@ O jogo já tem os dados (código público do jogo, `app.js` e `shared/tabela-pre
 - Médias de 7 dias dos itens, em ouro e em gemas (`market.medias`), e os anúncios (`market.listar`, `market.especies`, `market.itens`).
 - Comissão (`shared/taxa-mercado.mjs`), paga pelo vendedor: ouro 15%; item em gema 15%; pokémon em gema **por faixas progressivas** (13% até 500, 10% de 500 a 5.000, 7,5% acima), como imposto de renda.
 
-Ferramenta (v0.1.3): o app grava em `logs/s7-market.jsonl` tudo do Mercado que o jogo **recebe** quando você navega (`market`, `csv`, `comercio`) e os pedidos `market.*`/`csv.*` que a página manda (para conhecer os filtros). O app não manda nada ao servidor. Protocolo em `spikes/s7-market/README.md`.
+Ferramenta (só na v0.1.3): o app gravava em `logs/s7-market.jsonl` tudo do Mercado que o jogo **recebe** quando você navega (`market`, `csv`, `comercio`) e os pedidos `market.*`/`csv.*` que a página manda (para conhecer os filtros). O app não manda nada ao servidor. Protocolo em `spikes/s7-market/README.md`.
 
 **Decisões já tomadas para depois do S7:**
 - "Mesmo pokémon" = **espécie + shiny**. Nível, qualidade, IVs, potência e nota são destaques que explicam a variação de preço; mostrar também a venda mais cara e a mais barata com os stats delas.
 - Comparador: ao abrir o Mercado, cada anúncio com ▲/▼ em relação à mediana (painel do app, fora da página do jogo).
 - Calculadora: escolher os campos ou colar a ficha. Aceitar os dois formatos de texto do jogo: a ficha da tela (o shiny aparece como "✨ Shiny <espécie>") e o "Copiar p/ ChatGPT" (markdown com espécie, `Shiny: sim/não`, nível, potência, qualidade, IVs, refino e nota). Mostrar o valor em ouro e em gemas e o líquido depois da comissão.
 - Snipe (compra automática): **em espera**.
-- Exportação da planilha: manual no S7. Automatizar depois exige o app mandar o pedido pelo jogo.
+- Exportação da planilha: **automática, 1x por dia, por uma alt** e nunca pela main, montando o histórico local (~50 mil linhas e ~6–8 MB em 30 dias; o que passar de 30 dias é apagado). Decidido em 04/11/2026; é a primeira vez que o app envia pedidos ao jogo.
+- A calculadora consulta as vendas da espécie **só quando você clica**.
 
 **Resultado (04/11/2026):** o formato está mapeado e tem tudo o que o comparador e a calculadora precisam.
 
@@ -441,7 +442,29 @@ O jogo trocou o bônus automático pelo chat por **pontos do canal resgatados**,
 - **Efeito no app:** a presença invisível no chat (F2) não dá mais bônus, e o contador de "bônus estimado" ficou sem sentido. A Twitch passa a ter o mesmo problema da Kick: vídeo tocando custa RAM, e o login por Device Code (`chat:read`) não serve para assistir nem resgatar.
 - Limite de 2 lives na Twitch: relato de jogadores, ainda não medido.
 
-**S8 — Twitch (spike proposto):** o mesmo método da Kick, com login na página da Twitch numa sessão separada. Medir se a live escondida conta, o limite de lives, a memória, o baú e como funciona o resgate.
+**Na v0.1.4:** a presença no chat e o login por Device Code saíram do app (o token antigo é revogado e apagado ao abrir). A barra de cima mostra a Kick.
+
+#### S8 — Pontos da Twitch (spike, v0.1.4)
+
+O mesmo método da Kick, com login na página da Twitch numa sessão separada (`persist:twitch`). Mede se a live escondida conta, o limite de lives, a memória, o baú e como funciona o resgate. Fases em Configurações > Twitch (teste): T1 (2 lives, sem baú), T2 (2 lives, com baú), T3 (4 lives, com baú), T4 (janela transparente, plano B) e R (resgate manual pela Loja, com os pedidos gravados sem tokens). Protocolo em `spikes/s8-twitch/README.md`.
+
+Prévia no Linux, sem login (não mede pontos): escondida, a live toca em 160p depois de ~1 min, com ~320 MB por live (working set). A janela usa 1280×720 porque a coluna do chat, onde ficam o saldo e o baú, some em janelas estreitas. Os seletores do saldo e do baú não puderam ser testados sem login; por isso a ferramenta grava o trecho da página.
+
+**Decisões para depois do S8:** 0 a 2 lives por plataforma, com padrão 2 + 2 (~1 GB a mais); clique automático no baú liberado pelo dono.
+
+#### F10 — Farm e resgate da Kick (v0.1.4)
+
+| ID | Requisito |
+|---|---|
+| F10.1 | Lives dos canais oficiais `ativo` e ao vivo, escondidas, em 160p e sem som, na conta principal. De 0 a 2 lives (padrão 2) em Configurações > Kick. Sem login não abre nada |
+| F10.2 | As vagas vão para o canal mais perto da meta (os pontos são separados por canal). Só troca de live se a diferença passar de 50 pontos, porque cada troca perde o aquecimento |
+| F10.3 | Live aberta 15 min sem ganhar pontos cede a vaga e espera 30 min (ex.: live no celular usando as vagas). Renova a live a cada 6 h e reabre ao voltar da suspensão |
+| F10.4 | Saldo das lives abertas a cada minuto; o dos canais fechados, a cada 10 min |
+| F10.5 | Opção de resgate: **Só avisar** (padrão: notificação do Windows que abre a Loja ao clicar), **Resgatar um bônus** ou **Resgatar todos** (mira o bônus com menos tempo restante). Paga com o menor saldo suficiente |
+| F10.6 | Travas do resgate: só com a Kick vinculada no jogo, 1 por vez, no máximo 6 por hora, recompensa encontrada pelo título que o jogo informa. Se o jogo não creditar em 5 min, o resgate para e avisa; mudar a opção libera de novo. Canal cujo resgate falhou espera 30 min |
+| F10.7 | Resgates e avisos aparecem em Notificações, no filtro novo "Bônus". A barra de cima e a bandeja mostram lives abertas e pontos da sessão |
+
+O resgate automático só foi testado por partes (escolha do bônus, do canal e o ID do pedido). O pedido real à Kick é o gravado no S6, mas ainda não rodou pelo app: **falta validar com a sua conta**.
 
 #### Outras ideias (não comprometidas)
 

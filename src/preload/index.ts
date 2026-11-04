@@ -20,7 +20,7 @@ const api: DeckApi = {
   kick: {
     login: () => ipcRenderer.send(IPC.kickLogin),
     logout: () => ipcRenderer.send(IPC.kickLogout),
-    setPhase: (phase) => ipcRenderer.send(IPC.kickSetPhase, { phase }),
+    set: (patch) => ipcRenderer.send(IPC.kickSet, patch),
     openStore: (slug) => ipcRenderer.send(IPC.kickOpenStore, { slug }),
   },
   slots: {
@@ -37,12 +37,9 @@ const api: DeckApi = {
   },
   twitch: {
     login: () => ipcRenderer.send(IPC.twitchLogin),
-    cancelLogin: () => ipcRenderer.send(IPC.twitchCancelLogin),
-    openActivate: () => ipcRenderer.send(IPC.twitchOpenActivate),
     logout: () => ipcRenderer.send(IPC.twitchLogout),
-    setChannelEnabled: (login, enabled) => ipcRenderer.send(IPC.twitchSetChannelEnabled, { login, enabled }),
-    addExtra: (login) => ipcRenderer.send(IPC.twitchAddExtra, { login }),
-    removeExtra: (login) => ipcRenderer.send(IPC.twitchRemoveExtra, { login }),
+    setPhase: (phase) => ipcRenderer.send(IPC.twitchSetPhase, { phase }),
+    openStore: (login) => ipcRenderer.send(IPC.twitchOpenStore, { slug: login }),
   },
   events: {
     list: () => ipcRenderer.invoke(IPC.eventsList),

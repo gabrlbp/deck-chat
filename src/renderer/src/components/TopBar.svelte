@@ -2,7 +2,7 @@
   import type { AppState } from '../../../shared/ipc'
   import { feed } from '../lib/events.svelte'
   import { ui, type Tab } from '../lib/ui.svelte'
-  import TwitchPill from './TwitchPill.svelte'
+  import LivePill from './LivePill.svelte'
 
   let { app }: { app: AppState } = $props()
 
@@ -36,7 +36,7 @@
       ⬆ Atualizar para {app.update.version} e reiniciar
     </button>
   {/if}
-  <TwitchPill twitch={app.twitch} />
+  <LivePill kick={app.kick} />
   <button title="Esconde a janela na bandeja; os jogos continuam rodando" onclick={() => window.deck.hideToTray()}>
     ⤓ Bandeja
   </button>

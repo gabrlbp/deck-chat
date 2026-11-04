@@ -10,6 +10,7 @@ export const KINDS: Record<GameEventKind, { icon: string; label: string }> = {
   drop: { icon: '📦', label: 'Drops' },
   capture: { icon: '🎯', label: 'Capturas' },
   problem: { icon: '⚠️', label: 'Problemas' },
+  bonus: { icon: '🎁', label: 'Bônus' },
 }
 
 /** Liga o feed ao main. `isReading` diz se a aba Notificações está aberta (não conta como não lido). */

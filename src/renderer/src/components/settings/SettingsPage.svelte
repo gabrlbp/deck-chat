@@ -13,8 +13,8 @@
 
   const sections: { id: SettingsSection; label: string }[] = [
     { id: 'slots', label: 'Slots' },
-    { id: 'twitch', label: 'Twitch' },
-    { id: 'kick', label: 'Kick (teste)' },
+    { id: 'kick', label: 'Kick' },
+    { id: 'twitch', label: 'Twitch (teste)' },
     { id: 'system', label: 'Sistema' },
     { id: 'about', label: 'Sobre' },
   ]

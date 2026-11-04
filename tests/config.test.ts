@@ -40,7 +40,9 @@ describe('config', () => {
       hardwareAcceleration: false,
       memoryReload: { enabled: true, limitMb: 500 },
     })
-    expect(config.twitch.official).toHaveLength(1)
+    // a lista antiga da Twitch sai sem invalidar a config, e o farm da Kick começa sem gastar pontos
+    expect(config).not.toHaveProperty('twitch')
+    expect(config.kick).toEqual({ lives: 2, redeem: 'none', redeemType: 'xp' })
     expect(config.window?.maximized).toBe(true)
   })
 

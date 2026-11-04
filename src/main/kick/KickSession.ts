@@ -1,5 +1,6 @@
-import { BrowserWindow, session, shell, type Session, type WebContents } from 'electron'
+import { BrowserWindow, session, type Session, type WebContents } from 'electron'
 import { log } from '../logger'
+import { applyLivePolicy, trustedDomains } from '../live/policy'
 
 export const KICK = 'https://kick.com'
 export const KICK_PARTITION = 'persist:kick'
@@ -8,41 +9,9 @@ const LIGHT_URL = `${KICK}/robots.txt`
 const FETCH_TIMEOUT_MS = 20_000
 
 /** Login pela Kick e pelos provedores que ela usa (popups na mesma sessão). */
-const TRUSTED = ['kick.com', 'google.com', 'accounts.youtube.com', 'apple.com', 'discord.com']
-const GOOGLE_REGIONAL = /^accounts\.google\.(com?\.)?[a-z]{2}$/
+const isTrusted = trustedDomains(['kick.com', 'google.com', 'accounts.youtube.com', 'apple.com', 'discord.com'], /^accounts\.google\.(com?\.)?[a-z]{2}$/)
 
-function isTrusted(url: string): boolean {
-  if (url === 'about:blank') return true
-  try {
-    const { protocol, hostname } = new URL(url)
-    return (
-      protocol === 'https:' &&
-      (GOOGLE_REGIONAL.test(hostname) || TRUSTED.some((d) => hostname === d || hostname.endsWith(`.${d}`)))
-    )
-  } catch {
-    return false
-  }
-}
-
-/** Páginas da Kick só navegam na Kick (e no login); links de fora vão para o navegador. */
-export function applyKickPolicy(wc: WebContents): void {
-  wc.setWindowOpenHandler(({ url }) => {
-    if (isTrusted(url)) {
-      return {
-        action: 'allow',
-        overrideBrowserWindowOptions: { width: 520, height: 720, autoHideMenuBar: true, webPreferences: { partition: KICK_PARTITION } },
-      }
-    }
-    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
-  const guard = (event: { url: string; isMainFrame: boolean; preventDefault: () => void }) => {
-    if (event.isMainFrame && !isTrusted(event.url)) event.preventDefault()
-  }
-  wc.on('will-navigate', guard)
-  wc.on('will-redirect', guard)
-  wc.on('did-create-window', (popup) => applyKickPolicy(popup.webContents))
-}
+export const applyKickPolicy = (wc: WebContents): void => applyLivePolicy(wc, KICK_PARTITION, isTrusted)
 
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
   Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))])
@@ -147,17 +116,19 @@ export class KickSession {
     return this.apiReady
   }
 
-  /** GET/POST na API interna da Kick, de dentro de kick.com. */
-  async fetch(path: string): Promise<{ status: number; json: unknown }> {
+  /** Pedido à API interna da Kick, de dentro de kick.com. */
+  async fetch(path: string, post?: unknown): Promise<{ status: number; json: unknown }> {
     await withTimeout(this.ensureApi(), FETCH_TIMEOUT_MS)
     const token = await this.token()
     const code = `(async () => {
       const xsrf = decodeURIComponent((document.cookie.match(/XSRF-TOKEN=([^;]+)/) || [])[1] || '');
       const headers = { Accept: 'application/json' };
       const token = ${JSON.stringify(token)};
+      const post = ${JSON.stringify(post === undefined ? null : JSON.stringify(post))};
       if (token) headers.Authorization = 'Bearer ' + token;
       if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
-      const r = await fetch(${JSON.stringify(path)}, { headers, credentials: 'include' });
+      if (post) headers['Content-Type'] = 'application/json';
+      const r = await fetch(${JSON.stringify(path)}, { headers, credentials: 'include', ...(post ? { method: 'POST', body: post } : {}) });
       return { status: r.status, text: await r.text() };
     })()`
     const api = this.api

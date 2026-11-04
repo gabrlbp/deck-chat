@@ -25,13 +25,3 @@ export function lowestQualityOnly(playlist: string): string | null {
   if (!lowest) return null
   return `${[...head, ...lowest].join('\n')}\n`
 }
-
-/** Pedidos de vídeo da live (playlist e segmentos). Na fase "sem vídeo" eles são bloqueados. */
-export function isVideoRequest(url: string): boolean {
-  try {
-    const { hostname, pathname } = new URL(url)
-    return hostname.endsWith('live-video.net') || /\.(m3u8|ts|m4s|mp4)$/i.test(pathname)
-  } catch {
-    return false
-  }
-}

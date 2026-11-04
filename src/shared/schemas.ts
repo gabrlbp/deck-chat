@@ -1,4 +1,4 @@
-import { KICK_PHASE_IDS } from './kick'
+import { TWITCH_PHASE_IDS } from './twitch'
 import * as v from 'valibot'
 
 export const SLOT_IDS = ['slot-1', 'slot-2', 'slot-3', 'slot-4'] as const
@@ -29,22 +29,20 @@ export const SlotConfigSchema = v.object({
 })
 export type SlotConfig = v.InferOutput<typeof SlotConfigSchema>
 
-export const TwitchLoginSchema = v.pipe(
-  v.string(),
-  v.trim(),
-  v.toLowerCase(),
-  v.regex(/^[a-z0-9_]{2,25}$/, 'nome de canal inválido'),
-)
+export const BONUS_TYPES = ['xp', 'captura', 'shiny'] as const
+export type BonusType = (typeof BONUS_TYPES)[number]
 
-export const TwitchConfigSchema = v.object({
-  /** última lista oficial recebida do jogo; usada ao abrir, antes dos slots carregarem */
-  official: v.array(v.object({ login: TwitchLoginSchema, nome: v.string() })),
-  extras: v.array(TwitchLoginSchema),
-  disabled: v.array(TwitchLoginSchema),
+/** Farm de pontos da Kick (S6: live escondida com vídeo conta; só 2 lives contam por conta). */
+export const KickConfigSchema = v.object({
+  /** 0 = desligado */
+  lives: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(2)),
+  /** `none` só avisa; `one` resgata o bônus escolhido; `all` resgata os três, mirando o de menor tempo restante */
+  redeem: v.picklist(['none', 'one', 'all']),
+  redeemType: v.picklist(BONUS_TYPES),
 })
-export type TwitchConfig = v.InferOutput<typeof TwitchConfigSchema>
+export type KickConfig = v.InferOutput<typeof KickConfigSchema>
 
-const defaultTwitchConfig = (): TwitchConfig => ({ official: [], extras: [], disabled: [] })
+const defaultKickConfig = (): KickConfig => ({ lives: 2, redeem: 'none', redeemType: 'xp' })
 
 export const MEMORY_RELOAD_MIN_MB = 300
 export const MEMORY_RELOAD_MAX_MB = 2000
@@ -90,7 +88,7 @@ export const ConfigSchema = v.object({
   gameUrl: v.pipe(v.string(), v.url()),
   slots: v.pipe(v.array(SlotConfigSchema), v.length(SLOT_IDS.length)),
   // opcionais com padrão: configs salvas por versões anteriores continuam válidas
-  twitch: v.optional(TwitchConfigSchema, defaultTwitchConfig),
+  kick: v.optional(KickConfigSchema, defaultKickConfig),
   system: v.optional(SystemConfigSchema, defaultSystemConfig),
   window: v.optional(WindowStateSchema),
 })
@@ -106,7 +104,7 @@ export const DEFAULT_CONFIG: Config = {
     muted: true,
     zoom: 1,
   })),
-  twitch: defaultTwitchConfig(),
+  kick: defaultKickConfig(),
   system: defaultSystemConfig(),
 }
 
@@ -118,10 +116,9 @@ export const SetZoomPayload = v.object({ id: SlotIdSchema, zoom: ZoomSchema })
 export const SlotIdPayload = v.object({ id: SlotIdSchema })
 export const SetLabelPayload = v.object({ id: SlotIdSchema, label: SlotConfigSchema.entries.label })
 export const SetVisiblePayload = v.object({ visible: v.boolean() })
-export const ChannelPayload = v.object({ login: TwitchLoginSchema })
-export const SetChannelEnabledPayload = v.object({ login: TwitchLoginSchema, enabled: v.boolean() })
 export const SetSystemPayload = v.partial(SystemConfigSchema)
 export const SetFocusPayload = v.object({ id: v.nullable(SlotIdSchema) })
-export const KickPhasePayload = v.object({ phase: v.picklist(KICK_PHASE_IDS) })
-/** slug de canal da Kick: letras, números, _ e - */
-export const KickSlugPayload = v.object({ slug: v.pipe(v.string(), v.regex(/^[a-z0-9_-]{1,40}$/i)) })
+export const SetKickPayload = v.partial(KickConfigSchema)
+export const TwitchPhasePayload = v.object({ phase: v.picklist(TWITCH_PHASE_IDS) })
+/** canal da Kick ou da Twitch: letras, números, _ e - */
+export const ChannelSlugPayload = v.object({ slug: v.pipe(v.string(), v.regex(/^[a-z0-9_-]{1,40}$/i)) })

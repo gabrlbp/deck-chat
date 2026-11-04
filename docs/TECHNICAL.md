@@ -251,7 +251,7 @@ deck-chat/
 │   │   ├── slots/
 │   │   │   ├── SlotManager.ts    # cria/destroi views, bounds, mute, reload, crash, visibilidade, capturePage
 │   │   │   ├── policy.ts         # navegação permitida, popups about:blank, window open handler
-│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde; grava Mercado (S7) e bloco kick (S6)
+│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde; grava o bloco twitch (S8)
 │   │   │   └── recovery.ts       # novas tentativas do vigia quando o jogo não volta (B2, puro)
 │   │   ├── game/
 │   │   │   ├── messages.ts       # schemas Valibot das mensagens do jogo (batalha, estado, shiny.captura); tolerantes
@@ -259,19 +259,20 @@ deck-chat/
 │   │   │   ├── events.ts         # EventDraft (evento sem id/horário/slot)
 │   │   │   ├── parser.ts         # mensagem → evento (shiny, drop, captura, problema); puro e testável
 │   │   │   └── EventFeed.ts      # feed em memória da sessão, filtros, contador de não lidas
-│   │   ├── kick/                 # spike S6 (pontos da Kick)
-│   │   │   ├── KickSpike.ts      # fases, leitura de saldos por minuto, CSV, gravação da rede na Loja
+│   │   ├── live/                 # lives abertas para contar pontos (Kick e Twitch)
+│   │   │   ├── LiveWatcher.ts    # janela escondida ou transparente, sem som, 160p; lê frames WS se pedido
+│   │   │   ├── policy.ts         # navegação permitida nas páginas de live e nos logins
+│   │   │   └── hls.ts            # playlist → só a menor qualidade (puro)
+│   │   ├── kick/                 # farm e resgate da Kick (F10)
+│   │   │   ├── KickFarm.ts       # vagas, leitura de saldos, avisos e resgate com travas
 │   │   │   ├── KickSession.ts    # login (persist:kick) e API interna consultada de dentro de kick.com
-│   │   │   ├── KickWatcher.ts    # uma live aberta: escondida/transparente, 160p, ou só o chat
-│   │   │   ├── hls.ts            # playlist → só a menor qualidade; o que é pedido de vídeo (puro)
-│   │   │   └── select.ts         # quais lives abrir na fase (puro)
-│   │   └── twitch/
-│   │       ├── TwitchService.ts  # orquestra login, token, presença, lista do jogo e bônus
-│   │       ├── tokenStore.ts     # tokens criptografados com safeStorage (DPAPI)
-│   │       ├── channels.ts       # oficiais + extras, LiveTracker, cálculo do bônus (puro)
-│   │       ├── auth.ts           # Device Code Flow, validate, refresh
-│   │       ├── irc.ts            # parser de linhas IRC (puro, testável)
-│   │       └── TwitchPresence.ts # conexão, JOIN, keepalive, reconexão, estados
+│   │   │   ├── select.ts         # quais lives ficam abertas, pela meta (puro)
+│   │   │   └── redeem.ts         # qual bônus, qual canal, freio por hora, ULID (puro)
+│   │   ├── twitch/               # spike S8 (a presença no chat saiu: B3)
+│   │   │   ├── TwitchSpike.ts    # login (persist:twitch), fases, baú, CSV, gravação sem tokens
+│   │   │   ├── select.ts         # quais lives abrir na fase (puro)
+│   │   │   └── points.ts         # ganho de pontos lido dos frames da página (puro)
+│   │   ├── legacyTwitch.ts       # revoga e apaga o login antigo da Twitch
 │   ├── preload/
 │   │   └── index.ts              # contextBridge.exposeInMainWorld('deck', …)
 │   ├── renderer/                 # UI Svelte

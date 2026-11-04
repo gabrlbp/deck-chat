@@ -1,8 +1,8 @@
+import { randomUUID } from 'node:crypto'
 import { app, powerMonitor } from 'electron'
 import { readFileSync } from 'node:fs'
 import { IPC, type AppState, type MemorySample, type SlotStatus } from '../shared/ipc'
-import type { SystemConfig } from '../shared/schemas'
-import { summarize } from '../shared/twitch'
+import type { SlotId, SystemConfig } from '../shared/schemas'
 import { applyAutoStart, autoStartSupported } from './autostart'
 import { MemoryMonitor } from './diagnostics/MemoryMonitor'
 import { pickSlotToReload } from './diagnostics/memoryGuard'
@@ -12,10 +12,11 @@ import { log } from './logger'
 import { SlotManager } from './slots/SlotManager'
 import { loadConfig, saveConfig } from './store'
 import { AppTray, type TrayStatus } from './tray'
-import { TwitchService } from './twitch/TwitchService'
+import { removeOldTwitchLogin } from './legacyTwitch'
+import { TwitchSpike } from './twitch/TwitchSpike'
 import { Updater } from './updater'
 import { createMainWindow } from './window'
-import { KickSpike } from './kick/KickSpike'
+import { KickFarm } from './kick/KickFarm'
 
 const TICK_MS = 10_000
 const RELEASES_URL = 'https://github.com/gabrlbp/deck-chat/releases'
@@ -44,6 +45,8 @@ async function bootstrap(): Promise<void> {
   if (!config.system.hardwareAcceleration) app.disableHardwareAcceleration()
 
   await app.whenReady()
+  // sem isto as notificações do Windows não aparecem no app instalado
+  app.setAppUserModelId('dev.gbr.deckchat')
 
   const persist = () => saveConfig(config)
   // --hidden só vem do auto-start do Windows (quando "iniciar na bandeja" está ligado)
@@ -77,23 +80,23 @@ async function bootstrap(): Promise<void> {
   })
 
   const trayStatus = (): TrayStatus => {
-    const t = twitch.state()
-    const s = summarize(t, Date.now())
     const enabled = slots.states().filter((slot) => slot.enabled)
     const bad = enabled.filter((slot) => BAD_SLOT.includes(slot.status))
-    const twitchLine =
-      t.auth.state !== 'connected'
-        ? 'Twitch: não conectada'
-        : t.connection !== 'connected'
-          ? 'Twitch: reconectando ao chat…'
-          : `Twitch: ${s.live}/${s.total} ao vivo · ${s.bonus} bônus`
+    const k = kick.state()
+    const watching = k.channels.filter((c) => c.watching).length
+    const kickLine =
+      k.login !== 'logged-in'
+        ? 'Kick: sem login'
+        : k.config.lives === 0
+          ? 'Kick: desligado'
+          : `Kick: ${watching} ${watching === 1 ? 'live' : 'lives'} · +${k.gainedTotal} pontos`
     return {
       lines: [
-        twitchLine,
+        kickLine,
         `Slots: ${enabled.length - bad.length}/${enabled.length} ok`,
         ...(updater.snapshot.kind === 'ready' ? [`Versão ${updater.snapshot.version} pronta (instala ao sair)`] : []),
       ],
-      degraded: bad.length > 0 || t.auth.state === 'reauth' || (t.auth.state === 'connected' && t.connection !== 'connected'),
+      degraded: bad.length > 0 || k.problem !== undefined || k.redeemBlocked !== undefined,
     }
   }
 
@@ -107,17 +110,25 @@ async function bootstrap(): Promise<void> {
     if (!win.isDestroyed()) win.webContents.send(IPC.eventNew, event)
   })
   const slots = new SlotManager(win, config, persist, broadcast, (event) => feed.push(event))
-  const twitch = new TwitchService(config, persist, broadcast)
-  // spike S6: lista oficial e bônus vêm do bloco `kick` do jogo (prefere o slot com a Kick vinculada)
-  const kickBlocks = () =>
-    slots.snapshots().flatMap(({ id, snapshot }) => (snapshot.kick ? [{ slot: id, kick: snapshot.kick }] : []))
-  const kick = new KickSpike({
-    officials: () => {
-      const blocks = kickBlocks()
-      const best = blocks.find((b) => b.kick.vinculado && b.kick.oficiais) ?? blocks.find((b) => b.kick.oficiais)
-      return best?.kick.oficiais ?? []
+  // lista oficial e bônus vêm dos blocos `kick` e `twitch` do jogo
+  const kick = new KickFarm({
+    blocks: () =>
+      slots.snapshots().flatMap(({ id, snapshot }) => (snapshot.kick ? [{ slot: id, ...snapshot.kick }] : [])),
+    config: () => config.kick,
+    setConfig: (patch) => {
+      config.kick = { ...config.kick, ...patch }
+      persist()
     },
-    game: () => kickBlocks().map(({ slot, kick: k }) => ({ slot, vinculado: k.vinculado, login: k.login, bonus: k.bonus })),
+    onChange: () => broadcast(),
+    onEvent: (kind, title, detail, slot) => {
+      const id: SlotId = slot ?? slots.states()[0]?.id ?? 'slot-1'
+      const nick = slots.snapshots().find((s) => s.id === id)?.snapshot.nick
+      feed.push({ id: randomUUID(), at: Date.now(), slot: id, nick, kind, title, detail })
+    },
+  })
+  const twitch = new TwitchSpike({
+    blocks: () =>
+      slots.snapshots().flatMap(({ id, snapshot }) => (snapshot.twitch ? [{ slot: id, ...snapshot.twitch }] : [])),
     onChange: () => broadcast(),
   })
   const tray = new AppTray(win, () => {
@@ -130,6 +141,7 @@ async function bootstrap(): Promise<void> {
       const known = new Map<number, string>([[win.webContents.getOSProcessId(), 'interface']])
       for (const s of slots.processIds()) known.set(s.pid, s.nick ? `${s.id} · ${s.nick}` : s.id)
       for (const [pid, label] of kick.processLabels()) known.set(pid, label)
+      for (const [pid, label] of twitch.processLabels()) known.set(pid, label)
       return known
     },
     context: () => ({
@@ -180,7 +192,10 @@ async function bootstrap(): Promise<void> {
     kick,
   })
   applyAutoStart(config.system)
-  powerMonitor.on('resume', () => twitch.onResume())
+  powerMonitor.on('resume', () => {
+    kick.onResume()
+    twitch.onResume()
+  })
 
   // fechar a janela = esconder na bandeja. Sair só pelo menu do tray.
   win.on('close', (event) => {
@@ -208,12 +223,12 @@ async function bootstrap(): Promise<void> {
   })
 
   slots.start()
-  void twitch.start()
+  twitch.start()
+  void removeOldTwitchLogin()
   memory.start()
   updater.start()
   kick.start()
   setInterval(() => {
-    twitch.syncFromGame(slots.snapshots().map((s) => s.snapshot))
     slots.tick()
   }, TICK_MS)
   log(

@@ -45,35 +45,41 @@ export const BattleEventSchema = v.variant('k', [
 ])
 export type BattleEvent = v.InferOutput<typeof BattleEventSchema>
 
-const TwitchSchema = v.looseObject({
-  oficiais: lenient(v.array(v.looseObject({ login: v.string(), nome: lenient(v.string()) }))),
-  lives: lenient(v.array(v.looseObject({ login: v.string(), espectadores: lenient(v.number()) }))),
-})
+const BonusSchema = v.record(v.string(), v.number())
+const RewardSchema = v.looseObject({ tipo: v.string(), titulo: lenient(v.string()), custo: v.number() })
 
-/** Bloco `kick` do estado: lista oficial (com quem está ao vivo), recompensas e bônus ativos. */
-const KickSchema = v.looseObject({
+/** Campos iguais nos blocos `kick` e `twitch`: desde 04/11/2026 os dois funcionam por pontos do canal. */
+const channelPointsFields = {
   login: lenient(v.nullable(v.string())),
   vinculado: lenient(v.boolean()),
-  /** formato a confirmar no spike S6 (tempo restante? fim?); guardado como veio */
-  bonus: lenient(v.record(v.string(), v.unknown())),
+  /** horário (ms) em que cada bônus acaba; 0 = sem bônus (S6) */
+  bonus: lenient(BonusSchema),
   pct: lenient(v.number()),
   minutos: lenient(v.number()),
-  recompensas: lenient(
-    v.array(v.looseObject({ tipo: v.string(), titulo: lenient(v.string()), custo: v.number() })),
-  ),
-  oficiais: lenient(
-    v.array(
-      v.looseObject({
-        slug: v.string(),
-        nome: lenient(v.string()),
-        aoVivo: lenient(v.boolean()),
-        espectadores: lenient(v.number()),
-        ativo: lenient(v.boolean()),
-      }),
-    ),
-  ),
+  recompensas: lenient(v.array(RewardSchema)),
+  /** resgates de N horas de uma vez, pelo preço da hora × N, sem desconto */
+  pacotes: lenient(v.array(v.number())),
+}
+
+const officialFields = {
+  nome: lenient(v.string()),
+  aoVivo: lenient(v.boolean()),
+  espectadores: lenient(v.number()),
+  /** o canal tem as recompensas do jogo ("pontos ativos") */
+  ativo: lenient(v.boolean()),
+}
+
+const KickSchema = v.looseObject({
+  ...channelPointsFields,
+  oficiais: lenient(v.array(v.looseObject({ slug: v.string(), ...officialFields }))),
 })
 export type KickInfo = v.InferOutput<typeof KickSchema>
+
+const TwitchSchema = v.looseObject({
+  ...channelPointsFields,
+  oficiais: lenient(v.array(v.looseObject({ login: v.string(), ...officialFields }))),
+})
+export type TwitchInfo = v.InferOutput<typeof TwitchSchema>
 
 /** `estado` chega em pedaços: só os campos que mudaram. Ausente = sem mudança. */
 export const EstadoSchema = v.looseObject({
