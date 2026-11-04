@@ -351,7 +351,9 @@ Descartados: esconder o canvas por CSS (o 🙈 não economizou) e corretor ortog
 | F9.4 | Versão baixada: botão **"⬆ Atualizar para X e reiniciar"** na barra de cima, linha no menu da bandeja e seção **Atualização** em Sobre (com "Verificar agora"). Sair pelo menu da bandeja também instala |
 | F9.5 | Instala em silêncio na mesma pasta e reabre o app. A primeira versão com o atualizador (v0.1.3) ainda é instalada à mão |
 
-**Assinatura de código (decidido: sem assinatura).** O aviso do Windows é o SmartScreen, que aparece para executáveis com pouca reputação. Desde 2024 nenhum certificado o remove no primeiro dia (nem o EV). O Azure Artifact Signing (US$ 9,99/mês) não aceita pessoa física fora dos EUA e do Canadá; um certificado OV custa ~US$ 130–300/ano e exige chave em hardware. Com a atualização automática, o aviso só aparece na primeira instalação: os arquivos baixados pelo próprio app não recebem a marca "veio da internet" (confirmar na primeira atualização real).
+**Assinatura de código (decidido: sem assinatura).** O aviso do Windows é o SmartScreen, que aparece para executáveis com pouca reputação. Desde 2024 nenhum certificado o remove no primeiro dia (nem o EV). O Azure Artifact Signing (US$ 9,99/mês) não aceita pessoa física fora dos EUA e do Canadá; um certificado OV custa ~US$ 130–300/ano e exige chave em hardware. Com a atualização automática, o aviso só aparece na primeira instalação: os arquivos baixados pelo próprio app não recebem a marca "veio da internet".
+
+**Validado em 04/11/2026 (v0.1.3 → v0.1.4, Windows):** baixou sozinha, mostrou o aviso e, ao clicar em "Atualizar e reiniciar", o app reiniciou já na versão nova. O dono relatou que tudo funcionou, sem mencionar aviso do Windows.
 
 #### S6 — Pontos da Kick (spike, antes do farm e do resgate de bônus)
 
