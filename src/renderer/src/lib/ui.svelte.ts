@@ -2,7 +2,7 @@ import type { SlotSnapshot } from '../../../shared/ipc'
 import type { SlotId } from '../../../shared/schemas'
 
 export type Tab = 'accounts' | 'notifications' | 'settings'
-export type SettingsSection = 'slots' | 'twitch' | 'system' | 'about'
+export type SettingsSection = 'slots' | 'twitch' | 'kick' | 'system' | 'about'
 
 export type Modal = { kind: 'slot'; id: SlotId } | { kind: 'clearSession'; id: SlotId }
 

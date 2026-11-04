@@ -5,13 +5,16 @@
   import SlotSettings from './SlotSettings.svelte'
   import SystemSection from './SystemSection.svelte'
   import TwitchSection from './TwitchSection.svelte'
+  import KickSection from './KickSection.svelte'
   import MemoryPanel from './MemoryPanel.svelte'
+  import UpdatePanel from './UpdatePanel.svelte'
 
   let { app }: { app: AppState } = $props()
 
   const sections: { id: SettingsSection; label: string }[] = [
     { id: 'slots', label: 'Slots' },
     { id: 'twitch', label: 'Twitch' },
+    { id: 'kick', label: 'Kick (teste)' },
     { id: 'system', label: 'Sistema' },
     { id: 'about', label: 'Sobre' },
   ]
@@ -41,6 +44,8 @@
       </div>
     {:else if ui.settingsSection === 'twitch'}
       <TwitchSection twitch={app.twitch} />
+    {:else if ui.settingsSection === 'kick'}
+      <KickSection kick={app.kick} />
     {:else if ui.settingsSection === 'system'}
       <SystemSection system={app.system} />
     {:else}
@@ -53,14 +58,11 @@
         <dt>Dados</dt>
         <dd><code>{app.info.dataDir}</code></dd>
       </dl>
-      <p class="hint">
-        Para atualizar, baixe o instalador novo nos Releases do repositório (logado no GitHub) e instale por cima.
-        Logins e configurações são mantidos.
-      </p>
       <div class="buttons">
         <button onclick={() => window.deck.openReleases()}>Abrir Releases ↗</button>
         <button onclick={() => window.deck.openLogs()}>Abrir pasta de logs</button>
       </div>
+      <UpdatePanel update={app.update} />
       <MemoryPanel memory={app.memory} />
     {/if}
   </div>

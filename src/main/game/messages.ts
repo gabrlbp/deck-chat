@@ -50,6 +50,31 @@ const TwitchSchema = v.looseObject({
   lives: lenient(v.array(v.looseObject({ login: v.string(), espectadores: lenient(v.number()) }))),
 })
 
+/** Bloco `kick` do estado: lista oficial (com quem está ao vivo), recompensas e bônus ativos. */
+const KickSchema = v.looseObject({
+  login: lenient(v.nullable(v.string())),
+  vinculado: lenient(v.boolean()),
+  /** formato a confirmar no spike S6 (tempo restante? fim?); guardado como veio */
+  bonus: lenient(v.record(v.string(), v.unknown())),
+  pct: lenient(v.number()),
+  minutos: lenient(v.number()),
+  recompensas: lenient(
+    v.array(v.looseObject({ tipo: v.string(), titulo: lenient(v.string()), custo: v.number() })),
+  ),
+  oficiais: lenient(
+    v.array(
+      v.looseObject({
+        slug: v.string(),
+        nome: lenient(v.string()),
+        aoVivo: lenient(v.boolean()),
+        espectadores: lenient(v.number()),
+        ativo: lenient(v.boolean()),
+      }),
+    ),
+  ),
+})
+export type KickInfo = v.InferOutput<typeof KickSchema>
+
 /** `estado` chega em pedaços: só os campos que mudaram. Ausente = sem mudança. */
 export const EstadoSchema = v.looseObject({
   nick: lenient(v.string()),
@@ -60,6 +85,7 @@ export const EstadoSchema = v.looseObject({
   noCentro: lenient(v.boolean()),
   centroMotivo: lenient(v.nullable(v.string())),
   twitch: lenient(TwitchSchema),
+  kick: lenient(KickSchema),
 })
 export type Estado = v.InferOutput<typeof EstadoSchema>
 

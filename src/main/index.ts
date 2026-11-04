@@ -13,7 +13,9 @@ import { SlotManager } from './slots/SlotManager'
 import { loadConfig, saveConfig } from './store'
 import { AppTray, type TrayStatus } from './tray'
 import { TwitchService } from './twitch/TwitchService'
+import { Updater } from './updater'
 import { createMainWindow } from './window'
+import { KickSpike } from './kick/KickSpike'
 
 const TICK_MS = 10_000
 const RELEASES_URL = 'https://github.com/gabrlbp/deck-chat/releases'
@@ -23,7 +25,10 @@ const BAD_SLOT: SlotStatus[] = ['error', 'crashed', 'unresponsive']
 app.userAgentFallback = app.userAgentFallback.replace(/\s(?:Electron|deck-chat)\/\S+/g, '')
 
 // Janela coberta por outra (ex.: navegador maximizado por cima) não deve ser tratada como oculta.
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+// BackgroundVideoTrackOptimization: não congelar o vídeo das lives da Kick escondidas (S6)
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,BackgroundVideoTrackOptimization')
+app.commandLine.appendSwitch('disable-background-media-suspend')
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 
 if (!app.requestSingleInstanceLock()) {
@@ -48,6 +53,13 @@ async function bootstrap(): Promise<void> {
     persist()
   })
   let quitting = false
+  // F9: criado cedo porque o estado da UI e o tray o leem
+  const updater = new Updater(
+    () => broadcast(),
+    () => {
+      quitting = true
+    },
+  )
 
   const info = { version: app.getVersion(), electron: process.versions.electron, dataDir: app.getPath('userData') }
   const getState = (): AppState => ({
@@ -60,6 +72,8 @@ async function bootstrap(): Promise<void> {
       hardwareAccelerationActive: app.isHardwareAccelerationEnabled(),
     },
     memory: memory.state(),
+    update: updater.snapshot,
+    kick: kick.state(),
   })
 
   const trayStatus = (): TrayStatus => {
@@ -74,7 +88,11 @@ async function bootstrap(): Promise<void> {
           ? 'Twitch: reconectando ao chat…'
           : `Twitch: ${s.live}/${s.total} ao vivo · ${s.bonus} bônus`
     return {
-      lines: [twitchLine, `Slots: ${enabled.length - bad.length}/${enabled.length} ok`],
+      lines: [
+        twitchLine,
+        `Slots: ${enabled.length - bad.length}/${enabled.length} ok`,
+        ...(updater.snapshot.kind === 'ready' ? [`Versão ${updater.snapshot.version} pronta (instala ao sair)`] : []),
+      ],
       degraded: bad.length > 0 || t.auth.state === 'reauth' || (t.auth.state === 'connected' && t.connection !== 'connected'),
     }
   }
@@ -90,6 +108,18 @@ async function bootstrap(): Promise<void> {
   })
   const slots = new SlotManager(win, config, persist, broadcast, (event) => feed.push(event))
   const twitch = new TwitchService(config, persist, broadcast)
+  // spike S6: lista oficial e bônus vêm do bloco `kick` do jogo (prefere o slot com a Kick vinculada)
+  const kickBlocks = () =>
+    slots.snapshots().flatMap(({ id, snapshot }) => (snapshot.kick ? [{ slot: id, kick: snapshot.kick }] : []))
+  const kick = new KickSpike({
+    officials: () => {
+      const blocks = kickBlocks()
+      const best = blocks.find((b) => b.kick.vinculado && b.kick.oficiais) ?? blocks.find((b) => b.kick.oficiais)
+      return best?.kick.oficiais ?? []
+    },
+    game: () => kickBlocks().map(({ slot, kick: k }) => ({ slot, vinculado: k.vinculado, login: k.login, bonus: k.bonus })),
+    onChange: () => broadcast(),
+  })
   const tray = new AppTray(win, () => {
     quitting = true
     app.quit()
@@ -99,6 +129,7 @@ async function bootstrap(): Promise<void> {
     knownProcesses: () => {
       const known = new Map<number, string>([[win.webContents.getOSProcessId(), 'interface']])
       for (const s of slots.processIds()) known.set(s.pid, s.nick ? `${s.id} · ${s.nick}` : s.id)
+      for (const [pid, label] of kick.processLabels()) known.set(pid, label)
       return known
     },
     context: () => ({
@@ -145,6 +176,8 @@ async function bootstrap(): Promise<void> {
     setSystem,
     relaunch,
     releasesUrl: RELEASES_URL,
+    updater,
+    kick,
   })
   applyAutoStart(config.system)
   powerMonitor.on('resume', () => twitch.onResume())
@@ -170,12 +203,15 @@ async function bootstrap(): Promise<void> {
   app.on('before-quit', () => {
     quitting = true
     twitch.dispose()
+    kick.dispose()
     slots.destroyAll()
   })
 
   slots.start()
   void twitch.start()
   memory.start()
+  updater.start()
+  kick.start()
   setInterval(() => {
     twitch.syncFromGame(slots.snapshots().map((s) => s.snapshot))
     slots.tick()

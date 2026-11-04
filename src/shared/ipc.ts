@@ -1,3 +1,4 @@
+import type { KickPhase, KickState } from './kick'
 import type { Bounds, SlotId, SystemConfig } from './schemas'
 
 export const IPC = {
@@ -28,6 +29,12 @@ export const IPC = {
   openReleases: 'app:openReleases',
   relaunch: 'app:relaunch',
   setFocus: 'slots:setFocus',
+  updateCheck: 'update:check',
+  updateInstall: 'update:install',
+  kickLogin: 'kick:login',
+  kickLogout: 'kick:logout',
+  kickSetPhase: 'kick:setPhase',
+  kickOpenStore: 'kick:openStore',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -114,6 +121,18 @@ export type MemorySample = {
   processes: ProcessMemory[]
 }
 
+/** F9: atualização automática pelos Releases do GitHub. */
+export type UpdateStatus =
+  | { kind: 'unsupported' }
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'latest'; checkedAt: number }
+  | { kind: 'downloading'; version: string; percent: number }
+  | { kind: 'ready'; version: string }
+  | { kind: 'error'; message: string; checkedAt: number }
+
+export type UpdateState = UpdateStatus & { current: string }
+
 export type AppState = {
   slots: SlotState[]
   info: AppInfo
@@ -121,6 +140,9 @@ export type AppState = {
   system: SystemState
   /** última medição de memória (a cada minuto) */
   memory: MemorySample | null
+  update: UpdateState
+  /** spike S6 */
+  kick: KickState
 }
 
 export interface DeckApi {
@@ -132,6 +154,16 @@ export interface DeckApi {
   hideToTray(): void
   setSystem(patch: Partial<SystemConfig>): void
   relaunch(): void
+  update: {
+    check(): void
+    install(): void
+  }
+  kick: {
+    login(): void
+    logout(): void
+    setPhase(phase: KickPhase): void
+    openStore(slug: string): void
+  }
   slots: {
     setBounds(id: SlotId, bounds: Bounds): void
     setMuted(id: SlotId, muted: boolean): void

@@ -1,5 +1,5 @@
 import type { EventDraft } from './events'
-import type { Estado } from './messages'
+import type { Estado, KickInfo } from './messages'
 
 export type OfficialChannel = { login: string; nome?: string }
 export type LiveChannel = { login: string; espectadores?: number }
@@ -15,6 +15,8 @@ export type GameSnapshot = {
   centroMotivo?: string | null
   twitchOficiais?: OfficialChannel[]
   twitchLives?: LiveChannel[]
+  /** o bloco chega inteiro quando muda */
+  kick?: KickInfo
 }
 
 /** Soma das pokébolas que a automação usa; sem essa info, soma todas. */
@@ -50,6 +52,7 @@ export class SlotGame {
     if (estado.centroMotivo !== undefined) next.centroMotivo = estado.centroMotivo
     if (estado.twitch?.oficiais !== undefined) next.twitchOficiais = estado.twitch.oficiais
     if (estado.twitch?.lives !== undefined) next.twitchLives = estado.twitch.lives
+    if (estado.kick !== undefined) next.kick = { ...prev.kick, ...estado.kick }
 
     this.state = next
 

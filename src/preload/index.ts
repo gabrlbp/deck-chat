@@ -13,6 +13,16 @@ const api: DeckApi = {
   hideToTray: () => ipcRenderer.send(IPC.hideToTray),
   setSystem: (patch) => ipcRenderer.send(IPC.setSystem, patch),
   relaunch: () => ipcRenderer.send(IPC.relaunch),
+  update: {
+    check: () => ipcRenderer.send(IPC.updateCheck),
+    install: () => ipcRenderer.send(IPC.updateInstall),
+  },
+  kick: {
+    login: () => ipcRenderer.send(IPC.kickLogin),
+    logout: () => ipcRenderer.send(IPC.kickLogout),
+    setPhase: (phase) => ipcRenderer.send(IPC.kickSetPhase, { phase }),
+    openStore: (slug) => ipcRenderer.send(IPC.kickOpenStore, { slug }),
+  },
   slots: {
     setBounds: (id, bounds) => ipcRenderer.send(IPC.setBounds, { id, bounds }),
     setMuted: (id, muted) => ipcRenderer.send(IPC.setMuted, { id, muted }),

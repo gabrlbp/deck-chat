@@ -6,6 +6,7 @@ App desktop (Windows) para o PokeIdle: até 4 contas lado a lado, cada uma com s
 - **Notificações**: shinies, drops, capturas e problemas de todas as alts numa linha do tempo.
 - **Twitch**: lista oficial de streamers vinda do próprio jogo, bônus estimado por canal.
 - **Bandeja**: fechar ou minimizar esconde o app; pode iniciar com o Windows.
+- **Atualização automática** pelos Releases deste repositório (app instalado).
 
 Documentação: [PRD](docs/PRD.md) · [Decisões técnicas](docs/TECHNICAL.md)
 
@@ -26,4 +27,11 @@ git tag v0.1.0
 git push origin master v0.1.0
 ```
 
-O GitHub Actions gera o instalador e o zip portátil no Release da tag. Para atualizar, basta instalar por cima.
+O GitHub Actions gera o instalador e o zip portátil no Release da tag. O app instalado se atualiza sozinho; o zip portátil se atualiza baixando o novo.
+
+## Créditos e licença
+
+- A técnica de manter lives da Kick abertas em 160p (spike S6) é adaptada do [Kickterino](https://github.com/ViinniSantoos/kickterino), de ViinniSantoos (licença MIT).
+- Projeto independente, sem ligação com o PokeIdle, a Twitch ou a Kick.
+
+Licença [MIT](LICENSE).

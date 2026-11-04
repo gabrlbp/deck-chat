@@ -47,11 +47,11 @@ Um único app que:
 
 | Item | Motivo |
 |---|---|
-| **Kick** | O bônus da Kick é por pontos de canal ganhos **assistindo**, não por presença no chat. Você abre manualmente quando quiser |
+| ~~Kick~~ | Revisto na Fase 2 (03/11/2026): pontos e bônus da Kick viraram o spike S6. O bônus é por pontos de canal ganhos **assistindo**, então o custo é RAM, e assistir sem estar presente pode ir contra os termos da Kick (risco aceito) |
 | Ler ou enviar mensagens de chat | Não é o objetivo. A presença basta |
 | Automação de gameplay (cliques, bots, macros) | Risco de ban. O app só **exibe** o jogo |
 | Proxy ou IP por conta | O limite do jogo é 4 contas por IP, e o app respeita isso por design (máx. 4 slots) |
-| Auto-update | O repo é privado, e auto-update exigiria um token embutido no app. As atualizações são manuais, baixando o `.exe` dos Releases |
+| ~~Auto-update~~ | Revisto na Fase 2 (03/11/2026): o repo virou público (licença MIT) e a atualização automática entrou como F9 |
 | macOS e Linux como alvo | Só Windows. Linux é só ambiente de desenvolvimento |
 
 ## 3. Contexto de uso
@@ -112,7 +112,7 @@ PC secundário (Windows)
 | F3.1 | **Minimizar para a bandeja**: fechar a janela ou "minimizar" esconde o app em vez de encerrar. Menu do tray: Mostrar / Status / Sair. **A janela nunca fica no estado minimizado do Windows**, porque nele os slots caem para 1 fps (S3). O botão nativo de minimizar é desativado e substituído por "⤓ Bandeja" |
 | F3.2 | **Iniciar com o Windows** (opção), podendo já iniciar escondido na bandeja |
 | F3.3 | **Indicador de status** global na barra superior: Twitch (conectado, com nº de canais e bônus estimado) e slots (ok, recarregando, erro) |
-| F3.4 | **Atualização manual**: a aba Sobre mostra a versão instalada. Para atualizar, baixe o novo instalador nos Releases do repo privado e rode-o por cima; as sessões e a config são preservadas |
+| F3.4 | ~~Atualização manual~~ → automática desde a v0.1.3 (F9). A aba Sobre mostra a versão instalada e o estado da atualização; as sessões e a config são preservadas |
 | F3.5 | Janela lembra tamanho, posição e monitor |
 
 ### F5 — Notificações das alts
@@ -175,15 +175,17 @@ Windows liga
   você só abre a janela quando quiser olhar as contas
 ```
 
-### 5.3 Atualização manual
+### 5.3 Atualização
 
 ```text
 você faz git tag v0.2.0 && git push --tags
-  GitHub Actions (windows-latest) gera Deck-Chat-Setup-0.2.0.exe
-  publica num Release do próprio repo privado (GITHUB_TOKEN automático)
-no PC Windows
-  abre o Release no GitHub (logado) → baixa o .exe → instala por cima
+  GitHub Actions (windows-latest) gera Deck-Chat-Setup-0.2.0.exe + latest.yml
+  publica num Release do repo (público desde a v0.1.3)
+no PC Windows (a partir da v0.1.3, F9)
+  o app confere a cada 6 h, baixa sozinho e mostra "⬆ Atualizar para 0.2.0 e reiniciar"
+  um clique: fecha, instala em silêncio na mesma pasta e abre de novo
   config, tokens e sessões dos slots ficam em %APPDATA% → nada se perde
+zip portátil: continua manual (baixar nos Releases)
 ```
 
 ## 6. Interface (wireframe)
@@ -235,7 +237,7 @@ Já o **modal rápido** aparece sobre a aba Contas, com os prints desfocados dos
 | Desempenho | A presença na Twitch deve custar ~0 (1 WebSocket). O custo do app é dominado pelos slots (~200–400 MB de RAM cada, estimado) |
 | Segurança | Slots sem acesso a Node, `contextIsolation` + `sandbox`. Token criptografado. IPC validado com schemas |
 | Privacidade | Nenhuma telemetria. Logs só locais |
-| Distribuição | Instalador `.exe` (NSIS) gerado pelo GitHub Actions e publicado nos Releases do próprio repo privado. Atualização manual |
+| Distribuição | Instalador `.exe` (NSIS) gerado pelo GitHub Actions e publicado nos Releases do próprio repo (público, MIT). Atualização automática desde a v0.1.3 |
 
 ## 8. Roadmap
 
@@ -265,6 +267,8 @@ Ordem sugerida: ~~casca Electron + Svelte → slots (F1)~~ (feito na Fase 0) →
 Contexto do PC Windows que define as prioridades: **16 GB de RAM** divididos com outros programas, enquanto CPU (Ryzen 7 9800X3D, 8 núcleos/16 threads) e GPU (16 GB de VRAM) sobram. **RAM é o recurso a economizar**; trocar RAM por CPU/GPU é aceitável.
 
 Ordem combinada: B1 → S5 → F6 → (F7/F8 conforme o S5). Os itens 5 (snipe no mercado) e 6 (Kick) ficam para depois e serão discutidos à parte.
+
+Discussão de 03/11/2026: atualização automática (F9) e os spikes S6 (Kick) e S7 (Mercado) entram na v0.1.3. O snipe fica em espera; no lugar dele, um comparador de preços e uma calculadora, só de leitura.
 
 #### B1 — Bug: "Iniciar escondido na bandeja" abre a janela
 
@@ -337,11 +341,64 @@ O S5 mostrou que esconder o jogo (tela preta) não reduz a RAM. O botão 🙈 sa
 
 Descartados: esconder o canvas por CSS (o 🙈 não economizou) e corretor ortográfico (ganho irrelevante perto dos números acima).
 
+#### F9 — Atualização automática (v0.1.3)
+
+| ID | Requisito |
+|---|---|
+| F9.1 | Repo público com licença MIT, para o `electron-updater` ler os Releases sem token |
+| F9.2 | Só o app instalado (NSIS) se atualiza. O zip portátil e o modo de desenvolvimento não |
+| F9.3 | Confere 1 min após abrir e a cada 6 h; baixa em segundo plano (só a diferença, via blockmap) |
+| F9.4 | Versão baixada: botão **"⬆ Atualizar para X e reiniciar"** na barra de cima, linha no menu da bandeja e seção **Atualização** em Sobre (com "Verificar agora"). Sair pelo menu da bandeja também instala |
+| F9.5 | Instala em silêncio na mesma pasta e reabre o app. A primeira versão com o atualizador (v0.1.3) ainda é instalada à mão |
+
+**Assinatura de código (decidido: sem assinatura).** O aviso do Windows é o SmartScreen, que aparece para executáveis com pouca reputação. Desde 2024 nenhum certificado o remove no primeiro dia (nem o EV). O Azure Artifact Signing (US$ 9,99/mês) não aceita pessoa física fora dos EUA e do Canadá; um certificado OV custa ~US$ 130–300/ano e exige chave em hardware. Com a atualização automática, o aviso só aparece na primeira instalação: os arquivos baixados pelo próprio app não recebem a marca "veio da internet" (confirmar na primeira atualização real).
+
+#### S6 — Pontos da Kick (spike, antes do farm e do resgate de bônus)
+
+Referência: o Kickterino (open source, MIT) mantém 2 lives em janelas invisíveis, em 160p, consulta saldo pela API interna da Kick de dentro de uma página em kick.com, faz rodízio para chegar perto dos bônus e só **avisa** (o resgate é manual). Ele mediu que a Kick conta ~2 lives por conta (somando celular e TV) e +10 pts a cada ~5–6 min por live, após ~7 min de aquecimento (~240 pts/h no total).
+
+O que o jogo manda (`estado.kick`): `oficiais` (slug, nome, `aoVivo`, espectadores, `ativo`): a **lista dinâmica**, já com quem está ao vivo; `recompensas` (XP 300, Captura 500, Shiny 1000 pts); `pct` 15 e `minutos` 60; `bonus` por tipo; `vinculado` e `login`. Os bônus **somam tempo**: 3 resgates de XP = 180 min com os mesmos +15%, então resgatar com bônus ativo não desperdiça pontos.
+
+Perguntas do S6: uma live escondida dentro do app conta pontos? E sem vídeo, ou só com o chat? O limite é mesmo 2 lives? Quanta RAM cada live custa? Como é o resgate (endpoint) e o formato de `kick.bonus`?
+
+| Fase | Configuração |
+|---|---|
+| K1 | 2 lives, página completa em 160p, janelas escondidas |
+| K2 | 2 lives, página sem vídeo (pedidos de vídeo bloqueados) |
+| K3 | 4 lives, com vídeo (K3a) ou sem vídeo (K3b), para validar o limite |
+| K4 | Plano B do Kickterino: 2 lives em janela transparente |
+| K5 | Só o chat popout de 2 canais, sem player (a mais leve) |
+| R | Resgate manual de um bônus pela "Loja ↗" (chat popout), com a rede gravada |
+
+Ferramenta (v0.1.3, aba Configurações > Kick (teste)): login da Kick numa sessão separada (`persist:kick`), seletor de fase, tabela dos oficiais com saldo, ganho na fase e memória, e o bloco `kick` de cada slot. Arquivos em `logs/`: `s6-kick.csv` (por minuto: canal, ao vivo, aberta, pontos, ganho, estado do player, memória), `s6-kick-game.jsonl` (bloco `kick` do jogo a cada mudança) e `s6-kick-net.jsonl` (pedidos à API da Kick feitos na Loja, sem cabeçalhos). Protocolo em `spikes/s6-kick/README.md`.
+
+Prévia no Linux, sem login (não mede pontos): escondida, a live toca em 160p e o tempo do vídeo avança. Memória (working set) por canal: ~285 MB com vídeo (K1), ~280 MB sem vídeo (K2: o peso é a página, não o vídeo) e ~210 MB só com o chat (K5). A página de consultas usa ~90 MB.
+
+**Decisões já tomadas para depois do S6:**
+- Só a conta principal (uma conta da Kick).
+- Resgate configurável: **nenhum** (só aviso, como o Kickterino), **um bônus escolhido** ou **todos**. Em "todos", cada bônus é resgatado no canal que tiver saldo para ele, quando ele alcançar o custo: os pontos são separados por canal, e com mais lives contando os resgates ficam mais frequentes.
+- Se o S6 mostrar que mais de 2 lives contam, o número de lives vira opção, como na Twitch.
+
+#### S7 — Dados do Mercado (RMT) (spike, antes do comparador e da calculadora)
+
+O jogo já tem os dados (código público do jogo, `app.js` e `shared/tabela-precos.mjs`):
+- **Tabela de preços** (`market.historicoGlobal`): as vendas dos últimos **30 dias** do servidor inteiro, com filtros (busca por espécie, tipo, só shiny, só P5) e ordenação (recentes, caros, baratos, nota, IV, qualidade, potência, nível). Cada linha traz a **ficha completa** do pokémon, vendedor, comprador e valor. O próprio dev descreve a tabela como "a única referência que existe para saber por quanto anunciar um pokémon".
+- **Exportar planilha** (`csv.pedir` tipo `mercado`): até **5.000 vendas**, uma vez por hora por IP; o arquivo chega pelo WebSocket.
+- Médias de 7 dias dos itens, em ouro e em gemas (`market.medias`), e os anúncios (`market.listar`, `market.especies`, `market.itens`).
+- Comissão (`shared/taxa-mercado.mjs`), paga pelo vendedor: ouro 15%; item em gema 15%; pokémon em gema **por faixas progressivas** (13% até 500, 10% de 500 a 5.000, 7,5% acima), como imposto de renda.
+
+Ferramenta (v0.1.3): o app grava em `logs/s7-market.jsonl` tudo do Mercado que o jogo **recebe** quando você navega (`market`, `csv`, `comercio`) e os pedidos `market.*`/`csv.*` que a página manda (para conhecer os filtros). O app não manda nada ao servidor. Protocolo em `spikes/s7-market/README.md`.
+
+**Decisões já tomadas para depois do S7:**
+- "Mesmo pokémon" = **espécie + shiny**. Nível, qualidade, IVs, potência e nota são destaques que explicam a variação de preço; mostrar também a venda mais cara e a mais barata com os stats delas.
+- Comparador: ao abrir o Mercado, cada anúncio com ▲/▼ em relação à mediana (painel do app, fora da página do jogo).
+- Calculadora: escolher os campos ou colar a ficha. Aceitar os dois formatos de texto do jogo: a ficha da tela (o shiny aparece como "✨ Shiny <espécie>") e o "Copiar p/ ChatGPT" (markdown com espécie, `Shiny: sim/não`, nível, potência, qualidade, IVs, refino e nota). Mostrar o valor em ouro e em gemas e o líquido depois da comissão.
+- Snipe (compra automática): **em espera**.
+- Exportação da planilha: manual no S7. Automatizar depois exige o app mandar o pedido pelo jogo (ver a discussão no fim do S7).
+
 #### Outras ideias (não comprometidas)
 
 - Usar o slot 4 para a main.
-- Aviso de "nova versão disponível" ou auto-update, caso o repo vire público.
-- Item 5 — snipe no mercado (RMT) e item 6 — pontos e boosts da Kick: a discutir. Os dois tocam em decisões do escopo original (sem automação de gameplay; Kick fora por exigir assistir).
 
 ## 9. Critérios de aceite do MVP
 
@@ -372,9 +429,11 @@ Descartados: esconder o canvas por CSS (o 🙈 não economizou) e corretor ortog
 | Formato das mensagens do jogo mudar numa atualização | Médio | Parser isolado e tolerante: mensagens desconhecidas são ignoradas e logadas. As notificações param, mas o resto do app segue |
 | Mensagens em formato binário (msgpack/protobuf) | Médio | Descobrir no S4. Se forem binárias, decodificar com a lib correspondente |
 | Regras do jogo sobre clientes de terceiros | Médio | O app não automatiza nada e respeita o limite de 4 contas por IP |
+| Termos da Kick (assistir sem estar presente, resgate automático) | Médio | Só a conta principal, poucas lives. Risco aceito pelo dono (03/11/2026) |
+| API interna da Kick mudar | Médio | Isolada em `main/kick/`. Sem saldo, o farm continua, só os avisos e resgates param |
 
 ## 11. Questões em aberto
 
 - ~~URL do jogo~~ → `https://pokeidle.io`.
 - ~~Tempo até o bônus~~ → ~3min30s (navegador). Confirmar o mesmo tempo via IRC no S1.
-- ~~Distribuição~~ → repo único privado `deck-chat`, Releases privados, update manual.
+- ~~Distribuição~~ → repo `deck-chat` público (MIT) desde a v0.1.3, com atualização automática pelos Releases (F9).

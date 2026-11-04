@@ -13,12 +13,16 @@ import {
   SetVisiblePayload,
   SetZoomPayload,
   SlotIdPayload,
+  KickPhasePayload,
+  KickSlugPayload,
   type SystemConfig,
 } from '../shared/schemas'
 import { log, logDir } from './logger'
 import type { EventFeed } from './game/EventFeed'
 import type { SlotManager } from './slots/SlotManager'
 import type { TwitchService } from './twitch/TwitchService'
+import type { Updater } from './updater'
+import type { KickSpike } from './kick/KickSpike'
 
 type Deps = {
   slots: SlotManager
@@ -28,6 +32,8 @@ type Deps = {
   setSystem: (patch: Partial<SystemConfig>) => void
   relaunch: () => void
   releasesUrl: string
+  updater: Updater
+  kick: KickSpike
 }
 
 export function registerIpc(win: BrowserWindow, deps: Deps): void {
@@ -76,6 +82,12 @@ export function registerIpc(win: BrowserWindow, deps: Deps): void {
   })
   on(IPC.setSystem, SetSystemPayload, (patch) => deps.setSystem(patch))
   on(IPC.relaunch, v.undefined(), () => deps.relaunch())
+  on(IPC.updateCheck, v.undefined(), () => deps.updater.check())
+  on(IPC.updateInstall, v.undefined(), () => deps.updater.install())
+  on(IPC.kickLogin, v.undefined(), () => deps.kick.login())
+  on(IPC.kickLogout, v.undefined(), () => void deps.kick.logout())
+  on(IPC.kickSetPhase, KickPhasePayload, ({ phase }) => deps.kick.setPhase(phase))
+  on(IPC.kickOpenStore, KickSlugPayload, ({ slug }) => deps.kick.openStore(slug.toLowerCase()))
   on(IPC.setFocus, SetFocusPayload, ({ id }) => slots.setFocus(id))
 
   on(IPC.setBounds, SetBoundsPayload, ({ id, bounds }) => slots.setBounds(id, bounds))

@@ -27,6 +27,15 @@
     {/each}
   </nav>
 
+  {#if app.update.kind === 'ready'}
+    <button
+      class="update"
+      title="A versão {app.update.version} já foi baixada. O app fecha, instala e abre de novo; logins e configurações são mantidos"
+      onclick={() => window.deck.update.install()}
+    >
+      ⬆ Atualizar para {app.update.version} e reiniciar
+    </button>
+  {/if}
   <TwitchPill twitch={app.twitch} />
   <button title="Esconde a janela na bandeja; os jogos continuam rodando" onclick={() => window.deck.hideToTray()}>
     ⤓ Bandeja
@@ -57,6 +66,10 @@
     color: var(--text);
     background: var(--bg);
     box-shadow: inset 0 -2px 0 var(--twitch);
+  }
+  .update {
+    border-color: var(--ok);
+    color: var(--ok);
   }
   .badge {
     display: inline-block;

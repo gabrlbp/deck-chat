@@ -14,7 +14,7 @@ Complemento do [PRD](./PRD.md). Explica **o que** vamos usar, **por quê** e **c
 | Build/dev | **electron-vite** (Vite para main, preload e renderer) |
 | Validação | **Valibot**, só nas fronteiras (config, IPC, respostas da Twitch) |
 | Empacotamento | **electron-builder** → instalador NSIS para Windows |
-| Atualização | **Manual**: o `.exe` fica nos Releases do repo privado (sem electron-updater) |
+| Atualização | **electron-updater** (provider `github`) pelos Releases do repo público, desde a v0.1.3 |
 | Testes | **Vitest** (lógica pura: parser IRC, layout, schemas) |
 | Qualidade | ESLint + Prettier + `svelte-check` |
 | Gerenciador de pacotes | **npm**, por ter menos atrito com electron-builder no Windows |
@@ -206,23 +206,24 @@ views dos slots (pokeidle.io)
   will-navigate → só permite navegar dentro do domínio do jogo
 ```
 
-### ADR-008 — Distribuição: repo único privado + update manual
+### ADR-008 — Distribuição: repo único público + atualização automática
 
-**Decisão:** um único repo **privado** `deck-chat`. O CI publica o instalador nos **Releases desse mesmo repo**, e você baixa e instala manualmente.
+**Decisão (revista em 03/11/2026):** um único repo `deck-chat`, **público** com licença MIT. O CI publica o instalador nos **Releases desse mesmo repo**, e o app se atualiza sozinho com o `electron-updater` (F9).
 
-**Por quê:** os Releases herdam a visibilidade do repo. Num repo privado, baixar o `.exe` exige autenticação, então o auto-update precisaria de um token embutido no app. O GitHub Packages não é alternativa, porque serve para npm/Docker/NuGet e não para `.exe`. O update manual elimina tokens e o segundo repo.
+**Histórico:** até a v0.1.2 o repo era privado e a atualização manual, porque os Releases herdam a visibilidade do repo e o auto-update precisaria de um token embutido no app (extraível do `.exe` e com validade de no máximo 1 ano). Tornar o repo público resolveu sem token; não há segredo no código (o client id da Twitch é público, `spikes/` nunca foi commitado).
 
 ```mermaid
 flowchart LR
     Dev["git tag v0.2.0<br/>push --tags"] --> GA["GitHub Actions<br/>windows-latest"]
-    GA -->|"electron-builder --publish always<br/>GITHUB_TOKEN automático"| R["Releases (privado)<br/>Deck-Chat-Setup-0.2.0.exe"]
-    Você -->|"logado no GitHub<br/>baixa e instala por cima"| R
+    GA -->|"electron-builder --publish always<br/>GITHUB_TOKEN automático"| R["Releases (público)<br/>Setup .exe + latest.yml + blockmap"]
+    App["Deck Chat instalado"] -->|"electron-updater a cada 6 h<br/>baixa só a diferença"| R
 ```
 
 - Nenhum PAT: o workflow usa o `GITHUB_TOKEN` automático com `permissions: contents: write`.
 - Instalar por cima preserva tudo, porque config, tokens e partitions ficam em `%APPDATA%\Deck Chat`.
-- Se o repo virar público, dá para ligar o `electron-updater` depois com poucas linhas (provider `github`), sem token.
-- O `.exe` não é assinado, então o SmartScreen vai avisar na instalação. Aceitável para uso pessoal.
+- Só o app instalado pelo NSIS se atualiza (`main/updater.ts` procura o desinstalador ao lado do `.exe`). O zip portátil continua manual.
+- `quitAndInstall(silencioso, reabrir)`: antes, o app libera o fechamento da janela (que normalmente só esconde na bandeja).
+- O `.exe` não é assinado, então o SmartScreen avisa na primeira instalação. Assinar não remove o aviso no primeiro dia (ver PRD, F9), e as atualizações baixadas pelo próprio app não passam pelo SmartScreen.
 
 ---
 
@@ -236,7 +237,9 @@ deck-chat/
 │   │   ├── window.ts             # BaseWindow + view da UI, posição/tamanho salvos
 │   │   ├── ipc.ts                # registra handlers IPC (com validação Valibot)
 │   │   ├── logger.ts             # deck.log + CSVs em userData/logs
+│   │   ├── updater.ts            # atualização automática pelos Releases (F9)
 │   │   ├── diagnostics/
+│   │   │   ├── spikeLog.ts       # JSONL/CSV dos spikes S6 e S7 em userData/logs, com rotação
 │   │   │   ├── memory.ts         # métricas → amostra nomeada + linhas do CSV (puro, testável)
 │   │   │   ├── memoryGuard.ts    # qual slot recarregar por limite de memória (F8, puro)
 │   │   │   └── MemoryMonitor.ts  # app.getAppMetrics() a cada minuto → tela Sobre, guarda, logs/memory.csv
@@ -248,7 +251,7 @@ deck-chat/
 │   │   ├── slots/
 │   │   │   ├── SlotManager.ts    # cria/destroi views, bounds, mute, reload, crash, visibilidade, capturePage
 │   │   │   ├── policy.ts         # navegação permitida, popups about:blank, window open handler
-│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde
+│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde; grava Mercado (S7) e bloco kick (S6)
 │   │   │   └── recovery.ts       # novas tentativas do vigia quando o jogo não volta (B2, puro)
 │   │   ├── game/
 │   │   │   ├── messages.ts       # schemas Valibot das mensagens do jogo (batalha, estado, shiny.captura); tolerantes
@@ -256,6 +259,12 @@ deck-chat/
 │   │   │   ├── events.ts         # EventDraft (evento sem id/horário/slot)
 │   │   │   ├── parser.ts         # mensagem → evento (shiny, drop, captura, problema); puro e testável
 │   │   │   └── EventFeed.ts      # feed em memória da sessão, filtros, contador de não lidas
+│   │   ├── kick/                 # spike S6 (pontos da Kick)
+│   │   │   ├── KickSpike.ts      # fases, leitura de saldos por minuto, CSV, gravação da rede na Loja
+│   │   │   ├── KickSession.ts    # login (persist:kick) e API interna consultada de dentro de kick.com
+│   │   │   ├── KickWatcher.ts    # uma live aberta: escondida/transparente, 160p, ou só o chat
+│   │   │   ├── hls.ts            # playlist → só a menor qualidade; o que é pedido de vídeo (puro)
+│   │   │   └── select.ts         # quais lives abrir na fase (puro)
 │   │   └── twitch/
 │   │       ├── TwitchService.ts  # orquestra login, token, presença, lista do jogo e bônus
 │   │       ├── tokenStore.ts     # tokens criptografados com safeStorage (DPAPI)
