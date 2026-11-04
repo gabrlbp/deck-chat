@@ -374,6 +374,28 @@ Ferramenta (v0.1.3, aba Configurações > Kick (teste)): login da Kick numa sess
 
 Prévia no Linux, sem login (não mede pontos): escondida, a live toca em 160p e o tempo do vídeo avança. Memória (working set) por canal: ~285 MB com vídeo (K1), ~280 MB sem vídeo (K2: o peso é a página, não o vídeo) e ~210 MB só com o chat (K5). A página de consultas usa ~90 MB.
 
+**Resultado (04/11/2026, Windows, v0.1.3, conta principal):**
+
+| Fase | Lives abertas | Pontos no período (~40 min) | pts/h | Memória privada por live |
+|---|---|---|---|---|
+| K1 · vídeo 160p, escondidas | 2 | +130 | ~195 | ~234 MB |
+| K2 · sem vídeo | 2 | 0 | 0 | ~215 MB |
+| K3a · vídeo 160p, escondidas | 4 | +130 (só 2 das 4 ganharam) | ~197 | ~253 MB |
+| K3b · sem vídeo | 4 | 0 | 0 | ~240 MB |
+| K4 · vídeo, janela transparente | 2 | +140 | ~214 | ~262 MB |
+| K5 · só o chat | 2 | 0 | 0 | ~122 MB |
+
+Conclusões:
+- **Live escondida dentro do app conta pontos**, com a GPU desligada. A janela transparente do Kickterino não é necessária.
+- **Precisa do vídeo tocando.** Sem vídeo ou só com o chat não entra nenhum ponto.
+- **O limite de 2 lives se confirma**, e abrir mais só gasta memória. Não dá para escolher quais 2 contam (no K3a ganharam a 2ª e a 3ª abertas).
+- Ritmo medido: +10 a cada 6 min por live, ~100 pts/h por live e ~200 pts/h no total. Custo: ~500 MB (2 lives + página de consultas).
+- **Resgate:** `GET /api/v2/channels/{slug}/rewards?is_enabled=true` lista as recompensas (id, título, custo) e `POST /api/v2/channels/{slug}/rewards/{id}/redeem` com `{"transaction_id": <ULID>}` resgata (201). O saldo cai na hora e o jogo credita em ~8 s.
+- **`kick.bonus`:** `{xp, captura, shiny}` com o horário em que o bônus acaba (ms), 0 = sem bônus. Desde 04/11 o jogo também manda `pacotes: [3,5,10]`: resgates de 3, 5 e 10 h pelo preço da hora × horas, sem desconto. O título da recompensa de 1 h vem em `kick.recompensas[].titulo`.
+- `ativo` indica se o canal tem as recompensas ("pontos ativos"); só vale abrir os ativos.
+
+**Regra do resgate em "todos" (proposta):** resgatar assim que o saldo alcança o custo faria todo canal gastar em XP aos 300 pontos, e Captura e Shiny nunca sairiam. A proposta é mirar o bônus com menos tempo restante: o canal só resgata esse bônus, e o rodízio dá as vagas a quem está mais perto do custo dele.
+
 **Decisões já tomadas para depois do S6:**
 - Só a conta principal (uma conta da Kick).
 - Resgate configurável: **nenhum** (só aviso, como o Kickterino), **um bônus escolhido** ou **todos**. Em "todos", cada bônus é resgatado no canal que tiver saldo para ele, quando ele alcançar o custo: os pontos são separados por canal, e com mais lives contando os resgates ficam mais frequentes.
@@ -394,7 +416,32 @@ Ferramenta (v0.1.3): o app grava em `logs/s7-market.jsonl` tudo do Mercado que o
 - Comparador: ao abrir o Mercado, cada anúncio com ▲/▼ em relação à mediana (painel do app, fora da página do jogo).
 - Calculadora: escolher os campos ou colar a ficha. Aceitar os dois formatos de texto do jogo: a ficha da tela (o shiny aparece como "✨ Shiny <espécie>") e o "Copiar p/ ChatGPT" (markdown com espécie, `Shiny: sim/não`, nível, potência, qualidade, IVs, refino e nota). Mostrar o valor em ouro e em gemas e o líquido depois da comissão.
 - Snipe (compra automática): **em espera**.
-- Exportação da planilha: manual no S7. Automatizar depois exige o app mandar o pedido pelo jogo (ver a discussão no fim do S7).
+- Exportação da planilha: manual no S7. Automatizar depois exige o app mandar o pedido pelo jogo.
+
+**Resultado (04/11/2026):** o formato está mapeado e tem tudo o que o comparador e a calculadora precisam.
+
+| Mensagem | O que traz |
+|---|---|
+| `market` `aba=vitrine` (`market.listar`) | Anúncios de pokémon, 24 por página: preço, moeda, vendedor e a ficha completa (`speciesId`, nome, `shiny`, nível, `nota`, `ivTotal`, `potencia`, `quality`, stats, IVs, refino) |
+| `market` `aba=historicoGlobal` (`market.historicoGlobal`) | Vendas do servidor, 30 por página, com `bruto`, moeda, vendedor, comprador, data e a mesma ficha. Filtros: `tipo`, `busca`, `soShiny`, `soP5`, `ordem` |
+| `csv` `tipo=mercado` (`csv.pedir`) | Até 5.000 vendas em lista compacta: data, descrição, quantidade, moeda, bruto, vendedor, comprador, `[nível, shiny, nota, ivTotal, potência, qualidade]`. **Sem `speciesId` nem id da venda**; a espécie sai da descrição ("Infernape Nv 2441") |
+| `market` `aba=itens` (`market.itens`) | Por item: menor preço e média de 7 dias nas duas moedas, com unidades |
+
+Conclusões:
+- **A planilha sem filtro não cobre 30 dias.** Numa amostra de ~71 vendas de pokémon por hora, 5.000 linhas são ~3 dias. Para ter 30 dias, o app precisa **acumular um histórico local** (exportar 1x por dia, sem duplicar) ou consultar a espécie na hora. Com filtro de espécie, 30 dias cabem.
+- **Cotação ouro × gema:** dá para estimar pelos itens vendidos nas duas moedas. O Bronze Boss Token (~400 mil unidades em 7 dias) dá ~4,1 mi de ouro por gema; outros itens caros, 3,7–5,2 mi. Itens com preço mínimo do NPC distorcem e precisam ficar de fora.
+- Exemplo: Infernape shiny, 10 vendas em 30 dias, de 3.000 a 17.000 gemas, mediana ~5.750. A variação é grande até com a nota parecida, então a tela precisa mostrar a faixa e os extremos, não só a média.
+
+#### B3 — Twitch: o bônus do jogo mudou (04/11/2026)
+
+O jogo trocou o bônus automático pelo chat por **pontos do canal resgatados**, igual à Kick (versão 1.401 do cliente). Texto do próprio jogo: "A Twitch só dá pontos do canal a quem está na **página do canal** (ou no app da Twitch) com o vídeo rodando — o chat destacado sozinho não ganha nada".
+
+- Ganho oficial: 10 pts a cada 5 min, mais o baú de bônus de +50 "de tempos em tempos". Horas somam, inclusive entre canais, com pacotes de 3, 5 e 10 h.
+- `estado.twitch` passou a ter o formato da Kick (`vinculado`, `bonus`, `pct`, `minutos`, `recompensas`, `pacotes`, `oficiais[].aoVivo/espectadores/ativo`). O cliente do jogo não lê mais `twitch.lives`, de onde o app tira quem está ao vivo.
+- **Efeito no app:** a presença invisível no chat (F2) não dá mais bônus, e o contador de "bônus estimado" ficou sem sentido. A Twitch passa a ter o mesmo problema da Kick: vídeo tocando custa RAM, e o login por Device Code (`chat:read`) não serve para assistir nem resgatar.
+- Limite de 2 lives na Twitch: relato de jogadores, ainda não medido.
+
+**S8 — Twitch (spike proposto):** o mesmo método da Kick, com login na página da Twitch numa sessão separada. Medir se a live escondida conta, o limite de lives, a memória, o baú e como funciona o resgate.
 
 #### Outras ideias (não comprometidas)
 
@@ -429,7 +476,7 @@ Ferramenta (v0.1.3): o app grava em `logs/s7-market.jsonl` tudo do Mercado que o
 | Formato das mensagens do jogo mudar numa atualização | Médio | Parser isolado e tolerante: mensagens desconhecidas são ignoradas e logadas. As notificações param, mas o resto do app segue |
 | Mensagens em formato binário (msgpack/protobuf) | Médio | Descobrir no S4. Se forem binárias, decodificar com a lib correspondente |
 | Regras do jogo sobre clientes de terceiros | Médio | O app não automatiza nada e respeita o limite de 4 contas por IP |
-| Termos da Kick (assistir sem estar presente, resgate automático) | Médio | Só a conta principal, poucas lives. Risco aceito pelo dono (03/11/2026) |
+| Termos da Kick/Twitch e regra do jogo ("só vale assistindo de verdade"), com vínculo permanente da conta | Médio | Só a conta principal, no máximo 2 lives por plataforma. O risco é da conta principal; decisão do dono |
 | API interna da Kick mudar | Médio | Isolada em `main/kick/`. Sem saldo, o farm continua, só os avisos e resgates param |
 
 ## 11. Questões em aberto
