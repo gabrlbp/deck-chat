@@ -31,7 +31,6 @@ O GitHub Actions gera o instalador e o zip portátil no Release da tag. O app in
 
 ## Créditos e licença
 
-- A técnica de manter lives da Kick abertas em 160p (spike S6) é adaptada do [Kickterino](https://github.com/ViinniSantoos/kickterino), de ViinniSantoos (licença MIT).
 - Projeto independente, sem ligação com o PokeIdle, a Twitch ou a Kick.
 
 Licença [MIT](LICENSE).
