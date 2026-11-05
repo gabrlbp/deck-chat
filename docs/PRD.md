@@ -452,7 +452,45 @@ O mesmo método da Kick, com login na página da Twitch numa sessão separada (`
 
 Prévia no Linux, sem login (não mede pontos): escondida, a live toca em 160p depois de ~1 min, com ~320 MB por live (working set). A janela usa 1280×720 porque a coluna do chat, onde ficam o saldo e o baú, some em janelas estreitas. Os seletores do saldo e do baú não puderam ser testados sem login; por isso a ferramenta grava o trecho da página.
 
-**Decisões para depois do S8:** 0 a 2 lives por plataforma, com padrão 2 + 2 (~1 GB a mais); clique automático no baú liberado pelo dono.
+**Resultado (04–05/11/2026, Windows, v0.1.4):**
+
+| Fase | Lives | Assistir | Baús | pts/h | Memória privada por live |
+|---|---|---|---|---|---|
+| T1 · escondidas, sem clicar | 2 | 160 | 50 (1, sem o app clicar) | ~240 só assistindo | ~425 MB |
+| T2 · escondidas, com baú | 2 | 160 | 360 | ~700–780 | ~440 MB |
+| T3 · 4 lives, com baú | 4 | 170 | 350 | ~780 | ~425 MB |
+| T4 · transparente, com baú | 2 | 160 | 200 | ~550 | ~700 MB |
+
+- **Live escondida conta**, em 160p. A janela transparente custa 60% a mais de memória e não traz ganho: fica fora.
+- **O limite de 2 lives se confirma.**
+- **O baú rende mais que assistir:** ~2/3 dos pontos da T2. O clique na página funcionou (17 baús).
+- **Resgate:** GQL `RedeemCustomReward`, feito pela própria página; o jogo credita em ~13 s. O resgate pelo app ainda não foi testado.
+- **Saldos já existentes:** patopapao ~303,7 mil e tftoddy ~663,3 mil pontos, ~967 mil no total. Dá para ~537 h de XP + Captura + Shiny ao mesmo tempo (1.800 pts/h), sem assistir nada.
+- Pela página da Kick, ainda: 2 lives custam ~500 MB e rendem ~200 pts/h. Na Twitch, ~860 MB por até ~780 pts/h.
+
+**Decisões para depois do S8:** 0 a 2 lives por plataforma, com padrão 2 + 2 (~1 GB a mais); clique automático no baú liberado pelo dono. *A rever: com o saldo acima, a Twitch pode não precisar de lives por muito tempo.*
+
+#### S9 — Avaliação: presença sem vídeo (05/11/2026, não implementado)
+
+Proposta externa (patch de outro agente, 556 linhas): trocar as lives por pedidos que imitam o player. Na Twitch, `HEAD` nos segmentos HLS + evento `minute-watched` + GQL; na Kick, WebSocket de viewer com o evento `tracking.user.watch.livestream`.
+
+| | Antes (medido) | Depois (estimado, nunca medido) |
+|---|---|---|
+| Kick | 2 lives: ~470–520 MB + página de consultas ~38 MB | sem lives; consultas ~38 MB |
+| Twitch | 2 lives: ~860 MB | sem lives; poucos MB |
+| Total das lives | ~1,35 GB | ~40 MB |
+| Pontos Kick | ~200 pts/h | desconhecido |
+| Pontos Twitch | ~240 pts/h + baús, ~700–780 pts/h | desconhecido; sem o baú, no máximo ~240 pts/h |
+
+O que as fontes confirmam:
+- Desde 07/10/2026 a Twitch não conta só o `minute-watched`, e `HEAD` nos segmentos voltou a contar (Alorf/TwitchDropsBot#47, rangermix/TwitchDropsMiner#164, zarmstrong/Twitch-Channel-Points-Miner-v3#142). **A evidência é de Drops, não de pontos do canal**; a pergunta sobre pontos ficou sem resposta em rdavydov/Twitch-Channel-Points-Miner-v2#846.
+- `location` e `player` no evento fazem diferença para os baús (Guliveer/twitch-miner-go#41).
+- Os hashes do GQL estão no 0x8fv/Twitch-Channel-Points-Miner, e o protocolo da Kick está no Baillora/Kick_Channel_Points_Miner.
+- `ClaimCommunityPoints` fora da página falha com "failed integrity check" (MOTHblank/pokeidle-addons#227), então o baú exigiria também o token de integridade.
+
+Avaliação do patch: aplica na v0.1.4, mas nada o chama (`KickFarm` e `TwitchSpike` continuam iguais), só testa o parser, e não há medição de pontos. Na Kick não trata reconexão nem live nova, e depende de CORS não verificado.
+
+**Recomendação: não seguir.** Isso gera sinal falso de "assistindo" e imita o player para passar por uma checagem criada em 07/10 contra esse uso. É o mesmo protocolo de viewbots (`AdamBankz/kick-viewbot`, `H1B0B0/Kick-Viewerbot`), o jogo diz "só vale assistindo de verdade" e o vínculo é permanente. Caminho proposto para economizar: gastar o saldo da Twitch sem abrir lives.
 
 #### F10 — Farm e resgate da Kick (v0.1.4)
 
