@@ -35,12 +35,6 @@ const api: DeckApi = {
     capture: () => ipcRenderer.invoke(IPC.capture),
     clearSession: (id) => ipcRenderer.invoke(IPC.clearSession, { id }),
   },
-  twitch: {
-    login: () => ipcRenderer.send(IPC.twitchLogin),
-    logout: () => ipcRenderer.send(IPC.twitchLogout),
-    setPhase: (phase) => ipcRenderer.send(IPC.twitchSetPhase, { phase }),
-    openStore: (login) => ipcRenderer.send(IPC.twitchOpenStore, { slug: login }),
-  },
   events: {
     list: () => ipcRenderer.invoke(IPC.eventsList),
     clear: () => ipcRenderer.send(IPC.eventsClear),

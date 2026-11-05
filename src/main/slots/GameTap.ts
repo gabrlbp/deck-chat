@@ -1,9 +1,8 @@
 import type { WebContents } from 'electron'
 import type { EventDraft } from '../game/events'
 import { SlotGame } from '../game/GameState'
-import { decode, type TwitchInfo } from '../game/messages'
+import { decode } from '../game/messages'
 import { battleDrafts } from '../game/parser'
-import { spikeJsonl } from '../diagnostics/spikeLog'
 import { log } from '../logger'
 
 type WsFrameParams = { response: { opcode: number; payloadData: string } }
@@ -23,8 +22,6 @@ export class GameTap {
   private armed = false
   private messagesInWindow = 0
   private windowStartedAt = Date.now()
-  /** último bloco `twitch` gravado (S8), sem a lista oficial, para gravar só mudanças */
-  private lastTwitch: string | null = null
 
   constructor(wc: WebContents, slotId: string, onDrafts: (drafts: EventDraft[]) => void) {
     this.wc = wc
@@ -82,19 +79,8 @@ export class GameTap {
     this.armed = true
     this.messagesInWindow++
 
-    if (msg.t === 'estado' && msg.estado.twitch !== undefined) this.recordTwitch(msg.estado.twitch)
-
     const drafts =
       msg.t === 'batalha' ? battleDrafts(msg.ev) : msg.t === 'estado' ? this.game.apply(msg.estado) : []
     if (drafts.length) this.onDrafts(drafts)
-  }
-
-  /** Spike S8: o bloco novo da Twitch (vínculo, bônus, recompensas). A lista oficial só na primeira vez: os espectadores mudam o tempo todo. */
-  private recordTwitch(twitch: TwitchInfo): void {
-    const { oficiais, ...rest } = twitch
-    const text = JSON.stringify(rest)
-    if (text === this.lastTwitch) return
-    spikeJsonl('s8-twitch-game', { slot: this.slotId, twitch: this.lastTwitch === null ? twitch : rest, oficiais: oficiais?.length })
-    this.lastTwitch = text
   }
 }

@@ -10,13 +10,9 @@ type Options = {
   url: string
   partition: string
   size: { width: number; height: number }
-  /** `transparent` é o plano B: janela "mostrada" com opacidade 0, sem clique e fora da barra de tarefas */
-  window: 'hidden' | 'transparent'
   applyPolicy: (wc: WebContents) => void
   /** a página caiu ou não carregou */
   onGone: () => void
-  /** frames WebSocket que a página recebe (só leitura) */
-  onWsFrame?: (data: string) => void
 }
 
 /**
@@ -39,7 +35,6 @@ export class LiveWatcher {
       skipTaskbar: true,
       focusable: false,
       autoHideMenuBar: true,
-      ...(opts.window === 'transparent' ? { type: 'toolbar', opacity: 0 } : {}),
       webPreferences: { partition: opts.partition, backgroundThrottling: false, spellcheck: false },
     })
     const wc = this.win.webContents
@@ -58,10 +53,6 @@ export class LiveWatcher {
     })
 
     void this.win.loadURL(opts.url).catch(() => {})
-    if (opts.window === 'transparent') {
-      this.win.setIgnoreMouseEvents(true)
-      this.win.showInactive()
-    }
   }
 
   pid(): number | null {
@@ -95,7 +86,7 @@ export class LiveWatcher {
     if (!this.win.isDestroyed()) this.win.destroy()
   }
 
-  /** DevTools Protocol: troca a playlist mestre pela menor qualidade e, se pedido, lê os frames WebSocket. */
+  /** DevTools Protocol: troca a playlist mestre pela menor qualidade. */
   private instrument(): void {
     const dbg = this.win.webContents.debugger
     try {
@@ -104,10 +95,6 @@ export class LiveWatcher {
       return
     }
     dbg.on('message', (_e, method, params) => {
-      if (method === 'Network.webSocketFrameReceived') {
-        this.opts.onWsFrame?.((params as { response: { payloadData: string } }).response.payloadData)
-        return
-      }
       if (method !== 'Fetch.requestPaused') return
       const p = params as { requestId: string; responseStatusCode?: number; responseHeaders?: unknown[] }
       const pass = () => dbg.sendCommand('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {})
@@ -132,8 +119,5 @@ export class LiveWatcher {
       })()
     })
     void dbg.sendCommand('Fetch.enable', { patterns: [{ urlPattern: '*.m3u8*', requestStage: 'Response' }] }).catch(() => {})
-    if (this.opts.onWsFrame) {
-      void dbg.sendCommand('Network.enable', { maxTotalBufferSize: 1_000_000, maxResourceBufferSize: 100_000 }).catch(() => {})
-    }
   }
 }

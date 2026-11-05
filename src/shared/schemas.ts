@@ -1,4 +1,3 @@
-import { TWITCH_PHASE_IDS } from './twitch'
 import * as v from 'valibot'
 
 export const SLOT_IDS = ['slot-1', 'slot-2', 'slot-3', 'slot-4'] as const
@@ -119,6 +118,5 @@ export const SetVisiblePayload = v.object({ visible: v.boolean() })
 export const SetSystemPayload = v.partial(SystemConfigSchema)
 export const SetFocusPayload = v.object({ id: v.nullable(SlotIdSchema) })
 export const SetKickPayload = v.partial(KickConfigSchema)
-export const TwitchPhasePayload = v.object({ phase: v.picklist(TWITCH_PHASE_IDS) })
-/** canal da Kick ou da Twitch: letras, números, _ e - */
+/** canal da Kick: letras, números, _ e - */
 export const ChannelSlugPayload = v.object({ slug: v.pipe(v.string(), v.regex(/^[a-z0-9_-]{1,40}$/i)) })

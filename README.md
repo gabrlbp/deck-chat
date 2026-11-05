@@ -1,11 +1,10 @@
 # Deck Chat
 
-App desktop (Windows) para o PokeIdle: até 4 contas lado a lado, cada uma com sessão própria, e a conta principal juntando pontos nas lives dos streamers oficiais para os bônus do jogo.
+App desktop (Windows) para o PokeIdle: até 4 contas lado a lado, cada uma com sessão própria, e a conta principal juntando pontos nas lives da Kick para os bônus do jogo.
 
 - **Contas**: grid automático com as alts; cada slot é um navegador separado (login salvo). Recarrega sozinho se o jogo parar de responder.
 - **Notificações**: shinies, drops, capturas e problemas de todas as alts numa linha do tempo.
 - **Kick**: lives escondidas em 160p para juntar pontos na conta principal, com aviso ou resgate automático dos bônus. Lista de canais vinda do próprio jogo.
-- **Twitch**: em teste, com o mesmo método da Kick (o jogo trocou o bônus do chat por pontos do canal).
 - **Bandeja**: fechar ou minimizar esconde o app; pode iniciar com o Windows.
 - **Atualização automática** pelos Releases deste repositório (app instalado).
 
@@ -32,6 +31,6 @@ O GitHub Actions gera o instalador e o zip portátil no Release da tag. O app in
 
 ## Créditos e licença
 
-- Projeto independente, sem ligação com o PokeIdle, a Twitch ou a Kick. Assistir sem estar presente pode ir contra os termos dessas plataformas; use por sua conta e risco.
+- Projeto independente, sem ligação com o PokeIdle ou a Kick. Assistir sem estar presente pode ir contra os termos da plataforma; use por sua conta e risco.
 
 Licença [MIT](LICENSE).

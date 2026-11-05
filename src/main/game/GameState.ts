@@ -1,5 +1,5 @@
 import type { EventDraft } from './events'
-import type { Estado, KickInfo, TwitchInfo } from './messages'
+import type { Estado, KickInfo } from './messages'
 
 /** Estado conhecido de uma alt, montado a partir dos `estado` parciais. */
 export type GameSnapshot = {
@@ -10,9 +10,8 @@ export type GameSnapshot = {
   ballIds?: number[]
   noCentro?: boolean
   centroMotivo?: string | null
-  /** os blocos chegam inteiros quando mudam */
+  /** o bloco chega inteiro quando muda */
   kick?: KickInfo
-  twitch?: TwitchInfo
 }
 
 /** Soma das pokébolas que a automação usa; sem essa info, soma todas. */
@@ -47,7 +46,6 @@ export class SlotGame {
     if (estado.noCentro !== undefined) next.noCentro = estado.noCentro
     if (estado.centroMotivo !== undefined) next.centroMotivo = estado.centroMotivo
     if (estado.kick !== undefined) next.kick = { ...prev.kick, ...estado.kick }
-    if (estado.twitch !== undefined) next.twitch = { ...prev.twitch, ...estado.twitch }
 
     this.state = next
 

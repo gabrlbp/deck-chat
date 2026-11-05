@@ -4,7 +4,6 @@
   import { ui, type SettingsSection } from '../../lib/ui.svelte'
   import SlotSettings from './SlotSettings.svelte'
   import SystemSection from './SystemSection.svelte'
-  import TwitchSection from './TwitchSection.svelte'
   import KickSection from './KickSection.svelte'
   import MemoryPanel from './MemoryPanel.svelte'
   import UpdatePanel from './UpdatePanel.svelte'
@@ -14,7 +13,6 @@
   const sections: { id: SettingsSection; label: string }[] = [
     { id: 'slots', label: 'Slots' },
     { id: 'kick', label: 'Kick' },
-    { id: 'twitch', label: 'Twitch (teste)' },
     { id: 'system', label: 'Sistema' },
     { id: 'about', label: 'Sobre' },
   ]
@@ -42,8 +40,6 @@
           </section>
         {/each}
       </div>
-    {:else if ui.settingsSection === 'twitch'}
-      <TwitchSection twitch={app.twitch} />
     {:else if ui.settingsSection === 'kick'}
       <KickSection kick={app.kick} />
     {:else if ui.settingsSection === 'system'}

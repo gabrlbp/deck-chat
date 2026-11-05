@@ -1,6 +1,5 @@
 import type { KickState } from './kick'
 import type { Bounds, KickConfig, SlotId, SystemConfig } from './schemas'
-import type { TwitchPhase, TwitchState } from './twitch'
 
 export const IPC = {
   getState: 'app:getState',
@@ -29,10 +28,6 @@ export const IPC = {
   kickLogout: 'kick:logout',
   kickSet: 'kick:set',
   kickOpenStore: 'kick:openStore',
-  twitchLogin: 'twitch:login',
-  twitchLogout: 'twitch:logout',
-  twitchSetPhase: 'twitch:setPhase',
-  twitchOpenStore: 'twitch:openStore',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -106,8 +101,6 @@ export type UpdateState = UpdateStatus & { current: string }
 export type AppState = {
   slots: SlotState[]
   info: AppInfo
-  /** spike S8 */
-  twitch: TwitchState
   system: SystemState
   /** última medição de memória (a cada minuto) */
   memory: MemorySample | null
@@ -147,12 +140,6 @@ export interface DeckApi {
     setFocus(id: SlotId | null): void
     capture(): Promise<SlotSnapshot[]>
     clearSession(id: SlotId): Promise<void>
-  }
-  twitch: {
-    login(): void
-    logout(): void
-    setPhase(phase: TwitchPhase): void
-    openStore(login: string): void
   }
   events: {
     /** eventos da sessão, mais recente primeiro */

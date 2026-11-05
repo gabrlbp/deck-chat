@@ -18,7 +18,7 @@
 </script>
 
 <h2>Sistema</h2>
-<p class="hint">Fechar a janela ou minimizar só esconde o app na bandeja; os jogos e a Twitch continuam rodando.</p>
+<p class="hint">Fechar a janela ou minimizar só esconde o app na bandeja; os jogos e a Kick continuam rodando.</p>
 
 <section class="card">
   {#if !system.autoStartSupported}

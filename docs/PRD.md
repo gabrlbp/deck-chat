@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Status | Rascunho v2 — escopo fechado para o MVP |
+| Status | Rascunho v2. **A partir da v0.1.5 o app não integra com a Twitch** (ver B3 e S9): a presença no chat do texto original não dá mais bônus |
 | Dono | gbr |
 | Plataforma alvo | Windows 10/11 (PC secundário). Desenvolvimento no Linux |
 | Doc técnico | [TECHNICAL.md](./TECHNICAL.md) |
@@ -446,7 +446,9 @@ O jogo trocou o bônus automático pelo chat por **pontos do canal resgatados**,
 
 **Na v0.1.4:** a presença no chat e o login por Device Code saíram do app (o token antigo é revogado e apagado ao abrir). A barra de cima mostra a Kick.
 
-#### S8 — Pontos da Twitch (spike, v0.1.4)
+**Na v0.1.5:** a integração com a Twitch sai por completo (ver a decisão no S9). O app não abre mais lives nem guarda login da Twitch; a sessão do teste S8 é apagada ao abrir.
+
+#### S8 — Pontos da Twitch (spike, só na v0.1.4)
 
 O mesmo método da Kick, com login na página da Twitch numa sessão separada (`persist:twitch`). Mede se a live escondida conta, o limite de lives, a memória, o baú e como funciona o resgate. Fases em Configurações > Twitch (teste): T1 (2 lives, sem baú), T2 (2 lives, com baú), T3 (4 lives, com baú), T4 (janela transparente, plano B) e R (resgate manual pela Loja, com os pedidos gravados sem tokens). Protocolo em `spikes/s8-twitch/README.md`.
 
@@ -468,7 +470,7 @@ Prévia no Linux, sem login (não mede pontos): escondida, a live toca em 160p d
 - **Saldos já existentes:** patopapao ~303,7 mil e tftoddy ~663,3 mil pontos, ~967 mil no total. Dá para ~537 h de XP + Captura + Shiny ao mesmo tempo (1.800 pts/h), sem assistir nada.
 - Pela página da Kick, ainda: 2 lives custam ~500 MB e rendem ~200 pts/h. Na Twitch, ~860 MB por até ~780 pts/h.
 
-**Decisões para depois do S8:** 0 a 2 lives por plataforma, com padrão 2 + 2 (~1 GB a mais); clique automático no baú liberado pelo dono. *A rever: com o saldo acima, a Twitch pode não precisar de lives por muito tempo.*
+~~Decisões para depois do S8: 0 a 2 lives por plataforma; clique automático no baú.~~ Canceladas: a integração saiu na v0.1.5.
 
 #### S9 — Avaliação: presença sem vídeo (05/11/2026, não implementado)
 
@@ -491,6 +493,10 @@ O que as fontes confirmam:
 Avaliação do patch: aplica na v0.1.4, mas nada o chama (`KickFarm` e `TwitchSpike` continuam iguais), só testa o parser, e não há medição de pontos. Na Kick não trata reconexão nem live nova, e depende de CORS não verificado.
 
 **Recomendação: não seguir.** Isso gera sinal falso de "assistindo" e imita o player para passar por uma checagem criada em 07/10 contra esse uso. É o mesmo protocolo de viewbots (`AdamBankz/kick-viewbot`, `H1B0B0/Kick-Viewerbot`), o jogo diz "só vale assistindo de verdade" e o vínculo é permanente. Caminho proposto para economizar: gastar o saldo da Twitch sem abrir lives.
+
+Revisão com o artefato completo (05/11/2026): os métodos são os mesmos do patch. RakambdaOrg/ChannelPointsMiner#1407 mostra pontos do canal seguindo só com a telemetria em 08–09/10, depois de a Twitch mudar os Drops. O limite de 2 canais na Kick aparece também no jakeayy/kick-level-farm. Os números de memória do artefato são prévias: a página de consultas usa ~38 MB no Windows (não ~90) e a live da Twitch ~430 MB (não ~320).
+
+**Decisão do dono (05/11/2026): sem presença sem vídeo e sem integração com a Twitch.** O dono já assiste às lives da Twitch normalmente e resgata por lá. A Kick continua com as lives reais do F10. Os bônus da Kick e da Twitch são separados: +15% de cada, conferido no jogo.
 
 #### F10 — Farm e resgate da Kick (v0.1.4)
 
@@ -539,7 +545,7 @@ Avaliação do patch: aplica na v0.1.4, mas nada o chama (`KickFarm` e `TwitchSp
 | Formato das mensagens do jogo mudar numa atualização | Médio | Parser isolado e tolerante: mensagens desconhecidas são ignoradas e logadas. As notificações param, mas o resto do app segue |
 | Mensagens em formato binário (msgpack/protobuf) | Médio | Descobrir no S4. Se forem binárias, decodificar com a lib correspondente |
 | Regras do jogo sobre clientes de terceiros | Médio | O app não automatiza nada e respeita o limite de 4 contas por IP |
-| Termos da Kick/Twitch e regra do jogo ("só vale assistindo de verdade"), com vínculo permanente da conta | Médio | Só a conta principal, no máximo 2 lives por plataforma. O risco é da conta principal; decisão do dono |
+| Termos da Kick e regra do jogo ("só vale assistindo de verdade"), com vínculo permanente da conta | Médio | Só a conta principal, no máximo 2 lives, com o vídeo tocando de verdade. O risco é da conta principal; decisão do dono |
 | API interna da Kick mudar | Médio | Isolada em `main/kick/`. Sem saldo, o farm continua, só os avisos e resgates param |
 
 ## 11. Questões em aberto

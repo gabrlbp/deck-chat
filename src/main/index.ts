@@ -13,7 +13,6 @@ import { SlotManager } from './slots/SlotManager'
 import { loadConfig, saveConfig } from './store'
 import { AppTray, type TrayStatus } from './tray'
 import { removeOldTwitchLogin } from './legacyTwitch'
-import { TwitchSpike } from './twitch/TwitchSpike'
 import { Updater } from './updater'
 import { createMainWindow } from './window'
 import { KickFarm } from './kick/KickFarm'
@@ -68,7 +67,6 @@ async function bootstrap(): Promise<void> {
   const getState = (): AppState => ({
     slots: slots.states(),
     info,
-    twitch: twitch.state(),
     system: {
       ...config.system,
       autoStartSupported: autoStartSupported(),
@@ -110,7 +108,7 @@ async function bootstrap(): Promise<void> {
     if (!win.isDestroyed()) win.webContents.send(IPC.eventNew, event)
   })
   const slots = new SlotManager(win, config, persist, broadcast, (event) => feed.push(event))
-  // lista oficial e bônus vêm dos blocos `kick` e `twitch` do jogo
+  // lista oficial e bônus vêm do bloco `kick` do jogo
   const kick = new KickFarm({
     blocks: () =>
       slots.snapshots().flatMap(({ id, snapshot }) => (snapshot.kick ? [{ slot: id, ...snapshot.kick }] : [])),
@@ -126,11 +124,6 @@ async function bootstrap(): Promise<void> {
       feed.push({ id: randomUUID(), at: Date.now(), slot: id, nick, kind, title, detail })
     },
   })
-  const twitch = new TwitchSpike({
-    blocks: () =>
-      slots.snapshots().flatMap(({ id, snapshot }) => (snapshot.twitch ? [{ slot: id, ...snapshot.twitch }] : [])),
-    onChange: () => broadcast(),
-  })
   const tray = new AppTray(win, () => {
     quitting = true
     app.quit()
@@ -141,7 +134,6 @@ async function bootstrap(): Promise<void> {
       const known = new Map<number, string>([[win.webContents.getOSProcessId(), 'interface']])
       for (const s of slots.processIds()) known.set(s.pid, s.nick ? `${s.id} · ${s.nick}` : s.id)
       for (const [pid, label] of kick.processLabels()) known.set(pid, label)
-      for (const [pid, label] of twitch.processLabels()) known.set(pid, label)
       return known
     },
     context: () => ({
@@ -182,7 +174,6 @@ async function bootstrap(): Promise<void> {
   }
   registerIpc(win, {
     slots,
-    twitch,
     feed,
     getState,
     setSystem,
@@ -192,10 +183,7 @@ async function bootstrap(): Promise<void> {
     kick,
   })
   applyAutoStart(config.system)
-  powerMonitor.on('resume', () => {
-    kick.onResume()
-    twitch.onResume()
-  })
+  powerMonitor.on('resume', () => kick.onResume())
 
   // fechar a janela = esconder na bandeja. Sair só pelo menu do tray.
   win.on('close', (event) => {
@@ -217,13 +205,11 @@ async function bootstrap(): Promise<void> {
   })
   app.on('before-quit', () => {
     quitting = true
-    twitch.dispose()
     kick.dispose()
     slots.destroyAll()
   })
 
   slots.start()
-  twitch.start()
   void removeOldTwitchLogin()
   memory.start()
   updater.start()

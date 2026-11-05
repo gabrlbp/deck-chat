@@ -1,13 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
-
-// spikeLog importa o logger, que importa o electron; aqui só interessa a função pura
-vi.mock('electron', () => ({ app: { getPath: () => '/tmp' } }))
-
-import { redactSecrets } from '../src/main/diagnostics/spikeLog'
+import { describe, expect, it } from 'vitest'
 import { canRedeem, MAX_REDEEMS_PER_HOUR, pickChannel, pickTarget, ulid } from '../src/main/kick/redeem'
 import { planLives, pointsLeft, type FarmChannel } from '../src/main/kick/select'
 import { lowestQualityOnly } from '../src/main/live/hls'
-import { parsePointsGain } from '../src/main/twitch/points'
 
 const channel = (slug: string, points: number | null, extra: Partial<FarmChannel> = {}): FarmChannel => ({
   slug,
@@ -122,43 +116,5 @@ describe('Vídeo da live', () => {
 
   it('playlist de segmentos (uma qualidade só) passa sem mexer', () => {
     expect(lowestQualityOnly('#EXTM3U\n#EXTINF:2.0,\nseg1.ts\n')).toBeNull()
-  })
-})
-
-describe('Gravações dos spikes', () => {
-  it('tira JWTs e campos sensíveis, inclusive em JSON dentro de JSON', () => {
-    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI3NDM5In0.gGSWUWHZJ8KEWnKZ6Yde'
-    expect(redactSecrets(`{"data":{"token":"${jwt}"},"message":"success"}`)).toBe(
-      '{"data":{"token":"[removido]"},"message":"success"}',
-    )
-    expect(redactSecrets(`{"x":"prefixo ${jwt} fim"}`)).toBe('{"x":"prefixo [jwt] fim"}')
-    expect(redactSecrets('{"email":"alguem@exemplo.com","slug":"x","authToken":"abc123"}')).toBe(
-      '{"email":"[removido]","slug":"x","authToken":"[removido]"}',
-    )
-    expect(redactSecrets('{\\"access_token\\":\\"abc\\",\\"points\\":10}')).toBe(
-      '{\\"access_token\\":\\"[removido]\\",\\"points\\":10}',
-    )
-  })
-})
-
-describe('Twitch: ganho de pontos (S8)', () => {
-  const inner = {
-    type: 'points-earned',
-    data: {
-      timestamp: '2026-11-04T20:00:00Z',
-      channel_id: '123',
-      point_gain: { total_points: 50, reason_code: 'CLAIM' },
-      balance: { balance: 1200 },
-    },
-  }
-
-  it('lê o ganho em JSON puro e em JSON escapado', () => {
-    const expected = { key: '123|2026-11-04T20:00:00Z|50', points: 50, reason: 'CLAIM', channelId: '123' }
-    expect(parsePointsGain(JSON.stringify(inner))).toEqual(expected)
-    expect(parsePointsGain(JSON.stringify({ type: 'MESSAGE', data: { message: JSON.stringify(inner) } }))).toEqual(expected)
-  })
-
-  it('ignora outros frames', () => {
-    expect(parsePointsGain('{"type":"PONG"}')).toBeNull()
   })
 })

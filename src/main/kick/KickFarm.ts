@@ -295,7 +295,6 @@ export class KickFarm {
       url: `${KICK}/${slug}`,
       partition: KICK_PARTITION,
       size: WATCHER_SIZE,
-      window: 'hidden',
       applyPolicy: applyKickPolicy,
       onGone: () => {
         if (this.watchers.get(slug) === watcher) this.stopWatcher(slug, 'a página não está mais disponível')

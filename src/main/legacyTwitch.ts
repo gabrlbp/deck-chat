@@ -7,10 +7,18 @@ import { log } from './logger'
 const OLD_CLIENT_ID = 'qytowkk3g9925962b7fkj697j5a4oo'
 
 /**
- * A presença no chat da Twitch deixou de valer (B3, 04/11/2026). O login antigo não serve mais:
- * revoga o token na Twitch e apaga o arquivo. Se falhar (ex.: sem internet), o token vence sozinho.
+ * O app não integra mais com a Twitch: a presença no chat deixou de valer (B3) e as lives saíram
+ * (decisão de 05/11/2026). Revoga o token antigo na Twitch, apaga o arquivo e remove a sessão do teste S8.
+ * Se a revogação falhar (ex.: sem internet), o token vence sozinho.
  */
 export async function removeOldTwitchLogin(): Promise<void> {
+  const partition = join(app.getPath('userData'), 'Partitions', 'twitch')
+  if (existsSync(partition)) {
+    // nada mais abre persist:twitch, então nenhum arquivo está em uso
+    rmSync(partition, { recursive: true, force: true })
+    log('sessão da Twitch do teste S8 removida')
+  }
+
   const encrypted = join(app.getPath('userData'), 'twitch.bin')
   const plain = join(app.getPath('userData'), 'twitch.json')
   if (!existsSync(encrypted) && !existsSync(plain)) return

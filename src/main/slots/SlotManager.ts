@@ -72,7 +72,7 @@ export class SlotManager {
     })
   }
 
-  /** Dados do jogo de cada slot ativo (ex.: lista oficial de streamers para a Twitch). */
+  /** Dados do jogo de cada slot ativo (ex.: lista oficial de canais da Kick). */
   snapshots() {
     return this.config.slots.flatMap((cfg) => {
       const tap = this.slot(cfg.id).tap

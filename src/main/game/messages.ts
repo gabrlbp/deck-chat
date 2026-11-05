@@ -48,8 +48,8 @@ export type BattleEvent = v.InferOutput<typeof BattleEventSchema>
 const BonusSchema = v.record(v.string(), v.number())
 const RewardSchema = v.looseObject({ tipo: v.string(), titulo: lenient(v.string()), custo: v.number() })
 
-/** Campos iguais nos blocos `kick` e `twitch`: desde 04/11/2026 os dois funcionam por pontos do canal. */
-const channelPointsFields = {
+/** Bloco `kick` do estado: vínculo, bônus, recompensas e lista oficial. */
+const KickSchema = v.looseObject({
   login: lenient(v.nullable(v.string())),
   vinculado: lenient(v.boolean()),
   /** horário (ms) em que cada bônus acaba; 0 = sem bônus (S6) */
@@ -59,27 +59,20 @@ const channelPointsFields = {
   recompensas: lenient(v.array(RewardSchema)),
   /** resgates de N horas de uma vez, pelo preço da hora × N, sem desconto */
   pacotes: lenient(v.array(v.number())),
-}
-
-const officialFields = {
-  nome: lenient(v.string()),
-  aoVivo: lenient(v.boolean()),
-  espectadores: lenient(v.number()),
-  /** o canal tem as recompensas do jogo ("pontos ativos") */
-  ativo: lenient(v.boolean()),
-}
-
-const KickSchema = v.looseObject({
-  ...channelPointsFields,
-  oficiais: lenient(v.array(v.looseObject({ slug: v.string(), ...officialFields }))),
+  oficiais: lenient(
+    v.array(
+      v.looseObject({
+        slug: v.string(),
+        nome: lenient(v.string()),
+        aoVivo: lenient(v.boolean()),
+        espectadores: lenient(v.number()),
+        /** o canal tem as recompensas do jogo ("pontos ativos") */
+        ativo: lenient(v.boolean()),
+      }),
+    ),
+  ),
 })
 export type KickInfo = v.InferOutput<typeof KickSchema>
-
-const TwitchSchema = v.looseObject({
-  ...channelPointsFields,
-  oficiais: lenient(v.array(v.looseObject({ login: v.string(), ...officialFields }))),
-})
-export type TwitchInfo = v.InferOutput<typeof TwitchSchema>
 
 /** `estado` chega em pedaços: só os campos que mudaram. Ausente = sem mudança. */
 export const EstadoSchema = v.looseObject({
@@ -90,7 +83,6 @@ export const EstadoSchema = v.looseObject({
   automation: lenient(v.looseObject({ ballIds: lenient(v.array(v.number())) })),
   noCentro: lenient(v.boolean()),
   centroMotivo: lenient(v.nullable(v.string())),
-  twitch: lenient(TwitchSchema),
   kick: lenient(KickSchema),
 })
 export type Estado = v.InferOutput<typeof EstadoSchema>

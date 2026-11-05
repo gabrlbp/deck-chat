@@ -154,15 +154,13 @@ describe('SlotGame', () => {
     ])
   })
 
-  it('guarda os blocos de pontos do canal da Kick e da Twitch', () => {
+  it('guarda o bloco de pontos do canal da Kick', () => {
     const game = new SlotGame()
     game.apply({
       kick: { vinculado: true, login: 'main', bonus: { xp: 1793808753131, captura: 0, shiny: 0 }, oficiais: [{ slug: 'yetz', aoVivo: true, ativo: true }] },
-      twitch: { vinculado: false, recompensas: [{ tipo: 'xp', custo: 300 }], oficiais: [{ login: 'cogu', aoVivo: false, ativo: true }] },
     } as never)
     expect(game.snapshot.kick?.bonus?.xp).toBe(1793808753131)
     expect(game.snapshot.kick?.oficiais?.[0]?.slug).toBe('yetz')
-    expect(game.snapshot.twitch?.oficiais?.map((c) => c.login)).toEqual(['cogu'])
     // bloco parcial não apaga o resto
     game.apply({ kick: { bonus: { xp: 0 } } } as never)
     expect(game.snapshot.kick?.vinculado).toBe(true)

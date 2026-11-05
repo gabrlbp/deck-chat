@@ -5,7 +5,6 @@ import {
   ChannelSlugPayload,
   SetBoundsPayload,
   SetKickPayload,
-  TwitchPhasePayload,
   SetEnabledPayload,
   SetLabelPayload,
   SetMutedPayload,
@@ -19,13 +18,11 @@ import {
 import { log, logDir } from './logger'
 import type { EventFeed } from './game/EventFeed'
 import type { SlotManager } from './slots/SlotManager'
-import type { TwitchSpike } from './twitch/TwitchSpike'
 import type { Updater } from './updater'
 import type { KickFarm } from './kick/KickFarm'
 
 type Deps = {
   slots: SlotManager
-  twitch: TwitchSpike
   feed: EventFeed
   getState: () => AppState
   setSystem: (patch: Partial<SystemConfig>) => void
@@ -36,7 +33,7 @@ type Deps = {
 }
 
 export function registerIpc(win: BrowserWindow, deps: Deps): void {
-  const { slots, twitch, feed, getState } = deps
+  const { slots, feed, getState } = deps
   const fromUi = (sender: WebContents) => sender.id === win.webContents.id
 
   // canal fire-and-forget com payload validado
@@ -96,9 +93,4 @@ export function registerIpc(win: BrowserWindow, deps: Deps): void {
   on(IPC.reload, SlotIdPayload, ({ id }) => slots.reload(id))
   on(IPC.setLabel, SetLabelPayload, ({ id, label }) => slots.setLabel(id, label))
   on(IPC.setVisible, SetVisiblePayload, ({ visible }) => slots.setVisible(visible))
-
-  on(IPC.twitchLogin, v.undefined(), () => twitch.login())
-  on(IPC.twitchLogout, v.undefined(), () => void twitch.logout())
-  on(IPC.twitchSetPhase, TwitchPhasePayload, ({ phase }) => twitch.setPhase(phase))
-  on(IPC.twitchOpenStore, ChannelSlugPayload, ({ slug }) => twitch.openStore(slug.toLowerCase()))
 }

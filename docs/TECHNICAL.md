@@ -239,7 +239,6 @@ deck-chat/
 │   │   ├── logger.ts             # deck.log + CSVs em userData/logs
 │   │   ├── updater.ts            # atualização automática pelos Releases (F9)
 │   │   ├── diagnostics/
-│   │   │   ├── spikeLog.ts       # JSONL/CSV dos spikes S6 e S7 em userData/logs, com rotação
 │   │   │   ├── memory.ts         # métricas → amostra nomeada + linhas do CSV (puro, testável)
 │   │   │   ├── memoryGuard.ts    # qual slot recarregar por limite de memória (F8, puro)
 │   │   │   └── MemoryMonitor.ts  # app.getAppMetrics() a cada minuto → tela Sobre, guarda, logs/memory.csv
@@ -251,7 +250,7 @@ deck-chat/
 │   │   ├── slots/
 │   │   │   ├── SlotManager.ts    # cria/destroi views, bounds, mute, reload, crash, visibilidade, capturePage
 │   │   │   ├── policy.ts         # navegação permitida, popups about:blank, window open handler
-│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde; grava o bloco twitch (S8)
+│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde
 │   │   │   └── recovery.ts       # novas tentativas do vigia quando o jogo não volta (B2, puro)
 │   │   ├── game/
 │   │   │   ├── messages.ts       # schemas Valibot das mensagens do jogo (batalha, estado, shiny.captura); tolerantes
@@ -259,8 +258,8 @@ deck-chat/
 │   │   │   ├── events.ts         # EventDraft (evento sem id/horário/slot)
 │   │   │   ├── parser.ts         # mensagem → evento (shiny, drop, captura, problema); puro e testável
 │   │   │   └── EventFeed.ts      # feed em memória da sessão, filtros, contador de não lidas
-│   │   ├── live/                 # lives abertas para contar pontos (Kick e Twitch)
-│   │   │   ├── LiveWatcher.ts    # janela escondida ou transparente, sem som, 160p; lê frames WS se pedido
+│   │   ├── live/                 # lives abertas para contar pontos
+│   │   │   ├── LiveWatcher.ts    # janela escondida, sem som, 160p
 │   │   │   ├── policy.ts         # navegação permitida nas páginas de live e nos logins
 │   │   │   └── hls.ts            # playlist → só a menor qualidade (puro)
 │   │   ├── kick/                 # farm e resgate da Kick (F10)
@@ -268,11 +267,7 @@ deck-chat/
 │   │   │   ├── KickSession.ts    # login (persist:kick) e API interna consultada de dentro de kick.com
 │   │   │   ├── select.ts         # quais lives ficam abertas, pela meta (puro)
 │   │   │   └── redeem.ts         # qual bônus, qual canal, freio por hora, ULID (puro)
-│   │   ├── twitch/               # spike S8 (a presença no chat saiu: B3)
-│   │   │   ├── TwitchSpike.ts    # login (persist:twitch), fases, baú, CSV, gravação sem tokens
-│   │   │   ├── select.ts         # quais lives abrir na fase (puro)
-│   │   │   └── points.ts         # ganho de pontos lido dos frames da página (puro)
-│   │   ├── legacyTwitch.ts       # revoga e apaga o login antigo da Twitch
+│   │   ├── legacyTwitch.ts       # revoga o login antigo da Twitch e apaga a sessão do S8
 │   ├── preload/
 │   │   └── index.ts              # contextBridge.exposeInMainWorld('deck', …)
 │   ├── renderer/                 # UI Svelte
