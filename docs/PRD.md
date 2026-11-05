@@ -512,6 +512,22 @@ Revisão com o artefato completo (05/11/2026): os métodos são os mesmos do pat
 
 **Validado pelo dono na v0.1.4 (Windows, conta principal):** o farm abriu 2 lives sozinho, os pontos subiram, a Loja abriu e o resgate manual funcionou, e o resgate automático de um bônus deu certo. Falta ver na prática o modo "Resgatar todos" (a escolha do bônus só tem testes unitários).
 
+#### F11 — Mercado: comparador e calculadora (v0.1.6)
+
+| ID | Requisito |
+|---|---|
+| F11.1 | **Histórico local** em `%APPDATA%\deck-chat\market\sales.jsonl`: vendas de pokémon dos últimos 30 dias, sem duplicar (~6–8 MB). O que passa de 30 dias é apagado. Fica fora do jogo e do servidor |
+| F11.2 | **Painel "🏷 Preços"** na aba Contas: abre quando um slot mostra anúncios de pokémon. Cada anúncio traz ▲/▼ em % sobre a **mediana** de espécie + shiny, na mesma moeda; sem dados na moeda, usa a outra pela cotação (≈). Menos de 3 vendas: não afirma nada. Verde até −10%, vermelho a partir de +10% |
+| F11.3 | **Calculadora** na aba Mercado: colar a ficha (texto da tela ou "Copiar p/ ChatGPT") ou escolher espécie e shiny. Mostra Vender rápido (p25), Preço justo (mediana) e Esperar (p75), em gemas e em ouro; o líquido depois da comissão; a venda mais cara e a mais barata com os stats; e as 30 mais recentes. Com 3 ou mais vendas de nota parecida (±0,5), os preços usam só elas |
+| F11.4 | **Exportação diária:** 1x por dia, por uma **alt** e nunca pela main, o app pede a planilha de pokémon e as médias dos itens. O arquivo que a página tenta baixar é descartado. Recusada ou sem resposta, tenta de novo depois. A planilha traz ~3 dias, então o histórico leva dias para encher |
+| F11.5 | **Consulta sob demanda:** "Buscar vendas no jogo" e "consultar" pedem até 3 páginas da espécie à Tabela de preços, por uma alt, só ao clicar. A página descarta a resposta (`seq` diferente) |
+| F11.6 | **Leitura passiva:** navegar pelos anúncios, pela Tabela de preços ou exportar à mão em qualquer slot também alimenta o histórico |
+| F11.7 | **Cotação:** mediana de ouro ÷ gema dos itens com média ≥ 50 gemas e ≥ 100 unidades nas duas moedas, para evitar o arredondamento e o preço do NPC. Nos dados do S7: ~4,24 mi de ouro por gema |
+
+**Como o app envia:** pelo WebSocket que a página já abriu, sem alterar a página. O DevTools Protocol acha a instância (`Runtime.queryObjects`) e chama `send`, só em conexão aberta com o domínio do jogo. É a primeira vez que o app manda algo ao jogo. **Quem é alt:** slot funcionando, com o jogo respondendo e `kick.vinculado === false`; sem esse dado, o slot fica de fora, para nunca usar a main por engano.
+
+Testado: comissão contra vendas reais do extrato; parser com os textos reais de fichas; mensagens reais do S7 passando pelos slots (sem duplicar entre planilha e Tabela); envio e cancelamento de download num teste isolado com servidor local. **Falta validar contra o jogo de verdade:** o envio pela alt, a resposta da planilha e o descarte do download.
+
 #### Outras ideias (não comprometidas)
 
 - Usar o slot 4 para a main.

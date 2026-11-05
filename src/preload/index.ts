@@ -35,6 +35,11 @@ const api: DeckApi = {
     capture: () => ipcRenderer.invoke(IPC.capture),
     clearSession: (id) => ipcRenderer.invoke(IPC.clearSession, { id }),
   },
+  market: {
+    quote: (req) => ipcRenderer.invoke(IPC.marketQuote, req),
+    consult: (req) => ipcRenderer.invoke(IPC.marketConsult, req),
+    names: () => ipcRenderer.invoke(IPC.marketNames),
+  },
   events: {
     list: () => ipcRenderer.invoke(IPC.eventsList),
     clear: () => ipcRenderer.send(IPC.eventsClear),

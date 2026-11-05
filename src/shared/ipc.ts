@@ -1,4 +1,5 @@
 import type { KickState } from './kick'
+import type { ConsultResult, MarketState, Quote, QuoteRequest } from './market'
 import type { Bounds, KickConfig, SlotId, SystemConfig } from './schemas'
 
 export const IPC = {
@@ -28,6 +29,9 @@ export const IPC = {
   kickLogout: 'kick:logout',
   kickSet: 'kick:set',
   kickOpenStore: 'kick:openStore',
+  marketQuote: 'market:quote',
+  marketConsult: 'market:consult',
+  marketNames: 'market:names',
 } as const
 
 export type SlotStatus = 'loading' | 'ok' | 'error' | 'crashed' | 'unresponsive' | 'disabled'
@@ -106,6 +110,7 @@ export type AppState = {
   memory: MemorySample | null
   update: UpdateState
   kick: KickState
+  market: MarketState
 }
 
 export interface DeckApi {
@@ -140,6 +145,14 @@ export interface DeckApi {
     setFocus(id: SlotId | null): void
     capture(): Promise<SlotSnapshot[]>
     clearSession(id: SlotId): Promise<void>
+  }
+  market: {
+    /** com as vendas guardadas no PC */
+    quote(req: QuoteRequest): Promise<Quote>
+    /** pede antes ao jogo as vendas da espécie, por uma alt */
+    consult(req: QuoteRequest): Promise<ConsultResult>
+    /** espécies com vendas guardadas */
+    names(): Promise<string[]>
   }
   events: {
     /** eventos da sessão, mais recente primeiro */

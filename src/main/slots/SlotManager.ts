@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { WebContentsView, session, type BrowserWindow } from 'electron'
+import { WebContentsView, session, type BrowserWindow, type Session } from 'electron'
 import type { GameEvent, SlotGameInfo, SlotSnapshot, SlotState, SlotStatus } from '../../shared/ipc'
 import type { Bounds, Config, SlotConfig, SlotId } from '../../shared/schemas'
 import type { EventDraft } from '../game/events'
@@ -20,6 +20,8 @@ type Slot = {
   recovery?: Recovery
   /** último recarregamento por limite de memória (F8) */
   memoryReloadAt?: number
+  /** até quando um .csv baixado pela página é da exportação automática (F11) */
+  ignoreDownloadUntil?: number
 }
 
 const HIDDEN: Bounds = { x: 0, y: 0, width: 0, height: 0 }
@@ -28,6 +30,7 @@ const CRASH_RELOAD_MS = 3000
 const ERROR_RETRY_MS = 60_000
 /** O servidor manda ~60–90 mensagens/min por alt (S3); 3 min de silêncio = jogo parado. */
 const UNRESPONSIVE_MS = 3 * 60_000
+const IGNORE_DOWNLOAD_MS = 60_000
 /** As fotos do modal ficam desfocadas: metade da resolução e JPEG bastam. */
 const SNAPSHOT_SCALE = 0.5
 const SNAPSHOT_QUALITY = 70
@@ -38,6 +41,9 @@ export class SlotManager {
   private readonly persist: () => void
   private readonly onChange: () => void
   private readonly onEvent: (event: GameEvent) => void
+  private readonly onMarket: (id: SlotId, msg: Record<string, unknown>) => void
+  /** sessões que já têm o tratamento de downloads: elas sobrevivem a desativar e religar o slot */
+  private readonly downloadGuarded = new Set<SlotId>()
   private readonly slots = new Map<SlotId, Slot>()
   private visible = true
   /** modo foco (F6): só este slot aparece; os outros ficam escondidos e rodando */
@@ -49,12 +55,14 @@ export class SlotManager {
     persist: () => void,
     onChange: () => void,
     onEvent: (event: GameEvent) => void,
+    onMarket: (id: SlotId, msg: Record<string, unknown>) => void,
   ) {
     this.win = win
     this.config = config
     this.persist = persist
     this.onChange = onChange
     this.onEvent = onEvent
+    this.onMarket = onMarket
     for (const cfg of config.slots) {
       this.slots.set(cfg.id, { view: null, tap: null, status: 'disabled', bounds: HIDDEN })
     }
@@ -147,6 +155,47 @@ export class SlotManager {
     slot.memoryReloadAt = Date.now()
     log(`[${id}] usando ${Math.round(memoryMb)} MB (limite ${limitMb} MB), recarregando para liberar memória`)
     slot.view.webContents.reload()
+  }
+
+  /**
+   * Alt para os pedidos que o app faz ao jogo (F11): slot funcionando, com o jogo respondendo e que sabidamente
+   * não é a main (`kick.vinculado`). Sem o bloco `kick`, não dá para saber quem é: fica de fora.
+   */
+  altForRequests(): SlotId | null {
+    const now = Date.now()
+    for (const cfg of this.config.slots) {
+      const slot = this.slot(cfg.id)
+      const snapshot = slot.tap?.game.snapshot
+      const silent = slot.tap?.silentForMs(now) ?? null
+      if (slot.status === 'ok' && !slot.recovery && silent !== null && silent < UNRESPONSIVE_MS && snapshot?.nick && snapshot.kick?.vinculado === false) {
+        return cfg.id
+      }
+    }
+    return null
+  }
+
+  async sendToGame(id: SlotId, message: Record<string, unknown>): Promise<boolean> {
+    const tap = this.slot(id).tap
+    if (!tap) return false
+    log(`[${id}] pedido ao jogo: ${String(message['t'])}`)
+    return tap.send(message, new URL(this.config.gameUrl).hostname)
+  }
+
+  /** A página do jogo baixa a planilha ao receber a resposta: na exportação automática, esse arquivo é descartado. */
+  ignoreNextDownload(id: SlotId): void {
+    this.slot(id).ignoreDownloadUntil = Date.now() + IGNORE_DOWNLOAD_MS
+  }
+
+  private guardDownloads(id: SlotId, ses: Session): void {
+    if (this.downloadGuarded.has(id)) return
+    this.downloadGuarded.add(id)
+    ses.on('will-download', (event, item) => {
+      const slot = this.slot(id)
+      if ((slot.ignoreDownloadUntil ?? 0) < Date.now() || !item.getFilename().endsWith('.csv')) return
+      slot.ignoreDownloadUntil = undefined
+      event.preventDefault()
+      log(`[${id}] download automático da planilha descartado (os dados já foram lidos)`)
+    })
   }
 
   /** PID do processo de cada slot ativo, para o medidor de memória. */
@@ -315,9 +364,15 @@ export class SlotManager {
     const wc = view.webContents
     wc.setAudioMuted(cfg.muted)
     applySlotPolicy(wc, this.config.gameUrl, cfg.id)
-    const tap = new GameTap(wc, cfg.id, (drafts) => {
-      for (const draft of drafts) this.emit(cfg.id, draft)
-    })
+    const tap = new GameTap(
+      wc,
+      cfg.id,
+      (drafts) => {
+        for (const draft of drafts) this.emit(cfg.id, draft)
+      },
+      (msg) => this.onMarket(cfg.id, msg),
+    )
+    this.guardDownloads(cfg.id, wc.session)
     slot.tap = tap
 
     // só a navegação da página principal conta; iframes e pushState não mudam o status

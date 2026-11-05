@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { AppState } from '../../shared/ipc'
   import FocusCard from './components/FocusCard.svelte'
+  import MarketPage from './components/MarketPage.svelte'
+  import MarketPanel from './components/MarketPanel.svelte'
   import ModalHost from './components/ModalHost.svelte'
   import NotificationsPage from './components/NotificationsPage.svelte'
   import SettingsPage from './components/settings/SettingsPage.svelte'
@@ -43,7 +45,8 @@
   const others = $derived(enabled.filter((s) => s.id !== focused?.id))
 
   // muda quando o layout se reorganiza, para cada slot remedir a sua área
-  const layoutKey = $derived(`${enabled.map((s) => s.id).join(',')}|${focused?.id ?? ''}`)
+  const showMarketPanel = $derived(!ui.marketPanelClosed && app?.market.listings !== undefined)
+  const layoutKey = $derived(`${enabled.map((s) => s.id).join(',')}|${focused?.id ?? ''}|${showMarketPanel}`)
 
   function onkeydown(event: KeyboardEvent) {
     // o modal trata o próprio Esc (e marca defaultPrevented); aqui o Esc sai do foco.
@@ -61,6 +64,8 @@
 
     {#if ui.tab === 'settings'}
       <SettingsPage {app} />
+    {:else if ui.tab === 'market'}
+      <MarketPage market={app.market} />
     {:else if ui.tab === 'notifications'}
       <NotificationsPage {app} />
     {:else if enabled.length === 0}
@@ -68,7 +73,9 @@
         Nenhum slot ativo.
         <button onclick={() => (ui.tab = 'settings')}>Ativar em Configurações</button>
       </div>
-    {:else if focused}
+    {:else}
+      <div class="accounts" class:with-panel={showMarketPanel}>
+      {#if focused}
       <main class="focus" class:solo={others.length === 0}>
         {#key focused.id}
           <SlotFrame slot={focused} {layoutKey} />
@@ -81,7 +88,7 @@
           </aside>
         {/if}
       </main>
-    {:else}
+      {:else}
       <main
         class="grid"
         style:grid-template-columns="repeat({cols}, minmax(0, 1fr))"
@@ -97,6 +104,11 @@
           </div>
         {/if}
       </main>
+      {/if}
+      {#if showMarketPanel && app.market.listings}
+        <MarketPanel listings={app.market.listings} goldPerGem={app.market.goldPerGem} {app} />
+      {/if}
+      </div>
     {/if}
   </div>
 
@@ -108,6 +120,14 @@
     height: 100%;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
+  }
+  .accounts {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .accounts.with-panel {
+    grid-template-columns: minmax(0, 1fr) 430px;
   }
   .grid {
     display: grid;

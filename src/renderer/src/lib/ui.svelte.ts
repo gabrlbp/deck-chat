@@ -1,7 +1,7 @@
 import type { SlotSnapshot } from '../../../shared/ipc'
 import type { SlotId } from '../../../shared/schemas'
 
-export type Tab = 'accounts' | 'notifications' | 'settings'
+export type Tab = 'accounts' | 'market' | 'notifications' | 'settings'
 export type SettingsSection = 'slots' | 'kick' | 'system' | 'about'
 
 export type Modal = { kind: 'slot'; id: SlotId } | { kind: 'clearSession'; id: SlotId }
@@ -15,12 +15,15 @@ export const ui = $state<{
   snapshots: SlotSnapshot[]
   /** modo foco (F6): slot que ocupa o grid; não é salvo entre execuções */
   focus: SlotId | null
+  /** você fechou o painel de preços: só volta se pedir */
+  marketPanelClosed: boolean
 }>({
   tab: 'accounts',
   settingsSection: 'slots',
   modal: null,
   snapshots: [],
   focus: null,
+  marketPanelClosed: false,
 })
 
 export function toggleFocus(id: SlotId): void {

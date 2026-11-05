@@ -5,6 +5,7 @@ import {
   ChannelSlugPayload,
   SetBoundsPayload,
   SetKickPayload,
+  QuotePayload,
   SetEnabledPayload,
   SetLabelPayload,
   SetMutedPayload,
@@ -20,6 +21,7 @@ import type { EventFeed } from './game/EventFeed'
 import type { SlotManager } from './slots/SlotManager'
 import type { Updater } from './updater'
 import type { KickFarm } from './kick/KickFarm'
+import type { MarketService } from './market/MarketService'
 
 type Deps = {
   slots: SlotManager
@@ -30,6 +32,7 @@ type Deps = {
   releasesUrl: string
   updater: Updater
   kick: KickFarm
+  market: MarketService
 }
 
 export function registerIpc(win: BrowserWindow, deps: Deps): void {
@@ -65,6 +68,9 @@ export function registerIpc(win: BrowserWindow, deps: Deps): void {
   handle(IPC.capture, v.undefined(), () => slots.capture())
   handle(IPC.clearSession, SlotIdPayload, ({ id }) => slots.clearSession(id))
   handle(IPC.eventsList, v.undefined(), () => [...feed.list()])
+  handle(IPC.marketQuote, QuotePayload, (req) => deps.market.quote(req))
+  handle(IPC.marketConsult, QuotePayload, (req) => deps.market.consult(req))
+  handle(IPC.marketNames, v.undefined(), () => deps.market.speciesNames())
   on(IPC.eventsClear, v.undefined(), () => feed.clear())
 
   ipcMain.on(IPC.openLogs, (event) => {

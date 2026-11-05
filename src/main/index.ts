@@ -16,6 +16,7 @@ import { removeOldTwitchLogin } from './legacyTwitch'
 import { Updater } from './updater'
 import { createMainWindow } from './window'
 import { KickFarm } from './kick/KickFarm'
+import { MarketService } from './market/MarketService'
 
 const TICK_MS = 10_000
 const RELEASES_URL = 'https://github.com/gabrlbp/deck-chat/releases'
@@ -75,6 +76,7 @@ async function bootstrap(): Promise<void> {
     memory: memory.state(),
     update: updater.snapshot,
     kick: kick.state(),
+    market: market.state(),
   })
 
   const trayStatus = (): TrayStatus => {
@@ -107,7 +109,14 @@ async function bootstrap(): Promise<void> {
     log(`[evento] ${event.slot} ${event.nick ?? '?'} ${event.kind}: ${event.title}${event.detail ? ` (${event.detail})` : ''}`)
     if (!win.isDestroyed()) win.webContents.send(IPC.eventNew, event)
   })
-  const slots = new SlotManager(win, config, persist, broadcast, (event) => feed.push(event))
+  const slots = new SlotManager(win, config, persist, broadcast, (event) => feed.push(event), (id, msg) => market.onMessage(id, msg))
+  const market = new MarketService({
+    dataDir: app.getPath('userData'),
+    alt: () => slots.altForRequests(),
+    send: (id, message) => slots.sendToGame(id, message),
+    ignoreNextDownload: (id) => slots.ignoreNextDownload(id),
+    onChange: () => broadcast(),
+  })
   // lista oficial e bônus vêm do bloco `kick` do jogo
   const kick = new KickFarm({
     blocks: () =>
@@ -181,6 +190,7 @@ async function bootstrap(): Promise<void> {
     releasesUrl: RELEASES_URL,
     updater,
     kick,
+    market,
   })
   applyAutoStart(config.system)
   powerMonitor.on('resume', () => kick.onResume())
@@ -214,6 +224,7 @@ async function bootstrap(): Promise<void> {
   memory.start()
   updater.start()
   kick.start()
+  void market.start()
   setInterval(() => {
     slots.tick()
   }, TICK_MS)

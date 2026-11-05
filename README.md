@@ -3,6 +3,7 @@
 App desktop (Windows) para o PokeIdle: até 4 contas lado a lado, cada uma com sessão própria, e a conta principal juntando pontos nas lives da Kick para os bônus do jogo.
 
 - **Contas**: grid automático com as alts; cada slot é um navegador separado (login salvo). Recarrega sozinho se o jogo parar de responder.
+- **Mercado**: preço dos anúncios comparado com as vendas da espécie e calculadora de preço por espécie + shiny, com histórico local.
 - **Notificações**: shinies, drops, capturas e problemas de todas as alts numa linha do tempo.
 - **Kick**: lives escondidas em 160p para juntar pontos na conta principal, com aviso ou resgate automático dos bônus. Lista de canais vinda do próprio jogo.
 - **Bandeja**: fechar ou minimizar esconde o app; pode iniciar com o Windows.

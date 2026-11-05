@@ -250,7 +250,7 @@ deck-chat/
 │   │   ├── slots/
 │   │   │   ├── SlotManager.ts    # cria/destroi views, bounds, mute, reload, crash, visibilidade, capturePage
 │   │   │   ├── policy.ts         # navegação permitida, popups about:blank, window open handler
-│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde
+│   │   │   ├── GameTap.ts        # DevTools Protocol: lê os frames WS do slot → GameState, eventos, vigia de saúde; envia pedidos pela conexão da página (F11)
 │   │   │   └── recovery.ts       # novas tentativas do vigia quando o jogo não volta (B2, puro)
 │   │   ├── game/
 │   │   │   ├── messages.ts       # schemas Valibot das mensagens do jogo (batalha, estado, shiny.captura); tolerantes
@@ -267,6 +267,11 @@ deck-chat/
 │   │   │   ├── KickSession.ts    # login (persist:kick) e API interna consultada de dentro de kick.com
 │   │   │   ├── select.ts         # quais lives ficam abertas, pela meta (puro)
 │   │   │   └── redeem.ts         # qual bônus, qual canal, freio por hora, ULID (puro)
+│   │   ├── market/               # comparador e calculadora (F11)
+│   │   │   ├── MarketService.ts  # lê as mensagens dos slots, exportação diária, consulta, cotação
+│   │   │   ├── SalesStore.ts     # histórico em JSONL, sem duplicar, 30 dias
+│   │   │   ├── messages.ts       # planilha, Tabela de preços e anúncios → tipos do app (puro)
+│   │   │   └── stats.ts          # faixa de preços, comissão, cotação (puro)
 │   │   ├── legacyTwitch.ts       # revoga o login antigo da Twitch e apaga a sessão do S8
 │   ├── preload/
 │   │   └── index.ts              # contextBridge.exposeInMainWorld('deck', …)

@@ -118,5 +118,10 @@ export const SetVisiblePayload = v.object({ visible: v.boolean() })
 export const SetSystemPayload = v.partial(SystemConfigSchema)
 export const SetFocusPayload = v.object({ id: v.nullable(SlotIdSchema) })
 export const SetKickPayload = v.partial(KickConfigSchema)
+export const QuotePayload = v.object({
+  name: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(60)),
+  shiny: v.boolean(),
+  nota: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(10))),
+})
 /** canal da Kick: letras, números, _ e - */
 export const ChannelSlugPayload = v.object({ slug: v.pipe(v.string(), v.regex(/^[a-z0-9_-]{1,40}$/i)) })

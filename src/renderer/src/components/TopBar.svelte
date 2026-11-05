@@ -8,6 +8,7 @@
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'accounts', label: 'Contas' },
+    { id: 'market', label: 'Mercado' },
     { id: 'notifications', label: 'Notificações' },
     { id: 'settings', label: 'Configurações' },
   ]
@@ -35,6 +36,9 @@
     >
       ⬆ Atualizar para {app.update.version} e reiniciar
     </button>
+  {/if}
+  {#if ui.tab === 'accounts' && ui.marketPanelClosed && app.market.listings}
+    <button title="Mostra o painel de preços dos anúncios" onclick={() => (ui.marketPanelClosed = false)}>🏷 Preços</button>
   {/if}
   <LivePill kick={app.kick} />
   <button title="Esconde a janela na bandeja; os jogos continuam rodando" onclick={() => window.deck.hideToTray()}>
